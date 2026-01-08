@@ -1,7 +1,14 @@
 spring:
+  sql:
+    init:
+      mode: always
   application:
     name: giveLunch
   profiles:
     active: local
+  jpa:
+    hibernate:
+      ddl-auto: none
+    defer-datasource-initialization: true
 
 

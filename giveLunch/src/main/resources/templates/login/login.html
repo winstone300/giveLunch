@@ -85,7 +85,7 @@
             성공적으로 로그아웃되었습니다.
         </div>
 
-        <form method="post" th:action="@{/templates/login}">
+        <form method="post" th:action="@{/login}">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
             <label for="username">아이디</label>
             <input id="username" name="username" type="text" placeholder="아이디를 입력하세요" required />

@@ -1,10 +1,19 @@
 package main.givelunch.controllers;
 
+import lombok.RequiredArgsConstructor;
+import main.givelunch.dto.SignupRequest;
+import main.givelunch.services.SignupService;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
+@RequiredArgsConstructor
 public class LoginController {
+    private final SignupService signupService;
+
     @GetMapping("/login")
     public String login() {
         return "login/login";
@@ -13,5 +22,21 @@ public class LoginController {
     @GetMapping("/main")
     public String main() {
         return "main";
+    }
+
+    @GetMapping("/signup")
+    public String signup() {
+        return "login/signup";
+    }
+
+    @PostMapping("/signup")
+    public String signup(@ModelAttribute SignupRequest req, Model model) {
+        try {
+            signupService.signup(req);
+            return "redirect:/login?success";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            return "signup/signup";
+        }
     }
 }
