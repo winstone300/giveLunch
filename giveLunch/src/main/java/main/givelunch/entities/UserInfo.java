@@ -23,13 +23,14 @@ import lombok.Setter;
 public class UserInfo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", columnDefinition = "BIGINT")
     private Long id;
 
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
     @Column(nullable = false, length = 255)
-    private String password; // 지금은 평문 저장(나중에 BCrypt로 교체)
+    private String password;
 
     @Column(nullable = false, length = 50)
     private String email;

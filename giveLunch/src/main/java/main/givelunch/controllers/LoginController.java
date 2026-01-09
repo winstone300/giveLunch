@@ -36,7 +36,7 @@ public class LoginController {
             return "redirect:/login?success";
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
-            return "signup/signup";
+            return "login/signup";
         }
     }
 }

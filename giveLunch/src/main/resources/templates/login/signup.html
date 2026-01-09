@@ -103,17 +103,8 @@
         <h1>회원가입</h1>
         <p class="sub">정보를 입력해서 계정을 만들어주세요.</p>
 
-        <!-- 쿼리 파라미터 기반 메시지 -->
-        <div th:if="${param.error}" class="msg error">
-            회원가입에 실패했습니다. 입력값을 확인해주세요.
-        </div>
-        <div th:if="${param.success}" class="msg success">
-            회원가입이 완료되었습니다. 로그인해주세요.
-        </div>
-
         <!-- 컨트롤러에서 model로 내려주는 메시지(선택) -->
         <div th:if="${error}" class="msg error" th:text="${error}"></div>
-        <div th:if="${success}" class="msg success" th:text="${success}"></div>
 
         <form method="post" th:action="@{/signup}">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
@@ -147,21 +138,5 @@
     </div>
 </div>
 
-<script>
-    // 비밀번호 확인(클라이언트 측 간단 검증)
-    const pw = document.getElementById("password");
-    const pw2 = document.getElementById("passwordConfirm");
-
-    function validateMatch() {
-        if (pw.value && pw2.value && pw.value !== pw2.value) {
-            pw2.setCustomValidity("비밀번호가 일치하지 않습니다.");
-        } else {
-            pw2.setCustomValidity("");
-        }
-    }
-
-    pw.addEventListener("input", validateMatch);
-    pw2.addEventListener("input", validateMatch);
-</script>
 </body>
 </html>
