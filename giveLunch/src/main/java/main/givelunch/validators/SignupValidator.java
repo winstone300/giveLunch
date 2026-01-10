@@ -11,12 +11,12 @@ public class SignupValidator {
     private final UserRepository userRepository;
 
     public void validate(SignupRequestDto signupRequestDto) {
-        String username = signupRequestDto.getUsername();
+        String userName = signupRequestDto.getUserName();
         String password = signupRequestDto.getPassword();
         String passwordConfirm = signupRequestDto.getPasswordConfirm();
         String email = signupRequestDto.getEmail();
 
-        if (username == null || username.isBlank()) {
+        if (userName == null || userName.isBlank()) {
             throw new IllegalArgumentException("아이디를 입력해주세요.");
         }
         if (password == null || password.isBlank()) {
@@ -25,7 +25,7 @@ public class SignupValidator {
         if (!password.equals(passwordConfirm)) {
             throw new IllegalArgumentException("비밀번호 확인이 일치하지 않습니다.");
         }
-        if (userRepository.existsByUsername(username)) {
+        if (userRepository.existsByUserName(userName)) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
         if(userRepository.existsByEmail(email)){
