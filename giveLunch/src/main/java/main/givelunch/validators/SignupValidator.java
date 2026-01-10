@@ -1,9 +1,8 @@
 package main.givelunch.validators;
 
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.SignupRequest;
+import main.givelunch.dto.SignupRequestDto;
 import main.givelunch.repositories.UserRepository;
-import main.givelunch.services.SignupService;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -11,11 +10,11 @@ import org.springframework.stereotype.Component;
 public class SignupValidator {
     private final UserRepository userRepository;
 
-    public void validate(SignupRequest signupRequest) {
-        String username = signupRequest.getUsername();
-        String password = signupRequest.getPassword();
-        String passwordConfirm = signupRequest.getPasswordConfirm();
-        String email = signupRequest.getEmail();
+    public void validate(SignupRequestDto signupRequestDto) {
+        String username = signupRequestDto.getUsername();
+        String password = signupRequestDto.getPassword();
+        String passwordConfirm = signupRequestDto.getPasswordConfirm();
+        String email = signupRequestDto.getEmail();
 
         if (username == null || username.isBlank()) {
             throw new IllegalArgumentException("아이디를 입력해주세요.");

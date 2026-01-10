@@ -1,4 +1,4 @@
-package main.givelunch.services;
+package main.givelunch.services.login;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.UserInfo;
