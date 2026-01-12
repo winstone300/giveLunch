@@ -24,13 +24,14 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")    // GET /login -> 내가 만든 페이지
                         .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리(중요)
+                        .usernameParameter("userName")
                         .defaultSuccessUrl("/roulette", true) // 성공 시 이동
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login?logout=true")
+                        .logoutSuccessUrl("/roulette")
                 );
 
         return http.build();
