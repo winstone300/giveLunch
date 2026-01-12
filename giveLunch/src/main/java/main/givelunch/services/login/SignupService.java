@@ -1,7 +1,7 @@
-package main.givelunch.services;
+package main.givelunch.services.login;
 
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.SignupRequest;
+import main.givelunch.dto.SignupRequestDto;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.repositories.UserRepository;
 import main.givelunch.validators.SignupValidator;
@@ -17,11 +17,11 @@ public class SignupService {
     private final SignupValidator signupValidator;
 
     @Transactional
-    public void signup(SignupRequest req){
+    public void signup(SignupRequestDto req){
         signupValidator.validate(req);
 
         UserInfo user = UserInfo.builder()
-                .username(req.getUsername())
+                .userName(req.getUserName())
                 .password(passwordEncoder.encode(req.getPassword()))     // 암호화
                 .email(req.getEmail())
                 .build();

@@ -7,3 +7,9 @@ spring:
     hibernate:
       ddl-auto: update
 
+app:
+  menu:
+    defaults:
+      - 김치찌개
+      - 제육볶음
+      - 돈까스
