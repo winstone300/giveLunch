@@ -1,0 +1,42 @@
+package main.givelunch.services.roulette;
+
+import lombok.RequiredArgsConstructor;
+import main.givelunch.dto.FoodNutritionResponseDto;
+import main.givelunch.dto.NutritionDto;
+import main.givelunch.entities.Food;
+import main.givelunch.entities.Nutrition;
+import main.givelunch.repositories.FoodRepository;
+import main.givelunch.repositories.NutritionRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class FoodNutritionService {
+    private final FoodRepository foodRepository;
+    private final NutritionRepository nutritionRepository;
+
+    @Transactional(readOnly = true)
+    public FoodNutritionResponseDto getFoodNutrition(Long foodId) {
+        Food food = foodRepository.findById(foodId)
+                .orElseThrow(() -> new IllegalArgumentException("FOOD_NOT_FOUND: " + foodId));
+
+        Nutrition nutrition = nutritionRepository.findByFoodId(foodId)
+                .orElseThrow(() -> new IllegalArgumentException("NUTRITION_NOT_FOUND: " + foodId));
+
+        return FoodNutritionResponseDto.of(
+                food.getId(),
+                food.getName(),
+                food.getCategory(),
+                food.getImgUrl(),
+                food.getServingSizeG(),
+                NutritionDto.of(
+                        nutrition.getCalories(),
+                        nutrition.getProtein(),
+                        nutrition.getFat(),
+                        nutrition.getCarbohydrate()
+                ),
+                "INTERNAL_DB"
+        );
+    }
+}

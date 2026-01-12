@@ -1,5 +1,7 @@
 package main.givelunch.config;
 
+import lombok.RequiredArgsConstructor;
+import main.givelunch.properties.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,7 +10,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+    private final SecurityProperties securityProperties;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -16,9 +21,11 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        String[] permit = securityProperties.getPermitAll().toArray(new String[0]);
+
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/roulette","/signup", "/css/**", "/js/**", "/images/**","/error").permitAll()
+                        .requestMatchers(permit).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form

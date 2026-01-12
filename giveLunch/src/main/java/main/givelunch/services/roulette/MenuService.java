@@ -3,7 +3,7 @@ package main.givelunch.services.roulette;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.config.MenuProperties;
+import main.givelunch.properties.MenuProperties;
 import main.givelunch.dto.MenuDto;
 import main.givelunch.entities.Menu;
 import main.givelunch.repositories.MenuRepository;
