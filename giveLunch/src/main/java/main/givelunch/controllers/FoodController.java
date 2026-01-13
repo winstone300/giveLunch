@@ -24,11 +24,6 @@ public class FoodController {
         return foodNutritionService.getFoodNutrition(foodId);
     }
 
-    @GetMapping("/search")
-    public List<FoodSearchResponseDto> search(@RequestParam("keyword") String keyword) {
-        return foodSearchService.searchByKeyword(keyword);
-    }
-
     @GetMapping("/getId")
     public Long getId(@RequestParam("name") String name) {
         return foodSearchService.getIdByname(name);

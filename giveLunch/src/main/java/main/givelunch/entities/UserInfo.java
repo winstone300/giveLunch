@@ -2,6 +2,8 @@ package main.givelunch.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,6 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import main.givelunch.model.Role;
 
 @Entity
 @Table(name = "users")
@@ -33,4 +36,8 @@ public class UserInfo {
 
     @Column(nullable = false, length = 50)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private Role role = Role.USER;
 }

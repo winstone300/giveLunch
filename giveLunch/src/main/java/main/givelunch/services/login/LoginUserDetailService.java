@@ -2,6 +2,7 @@ package main.givelunch.services.login;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.UserInfo;
+import main.givelunch.model.Role;
 import main.givelunch.repositories.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,7 +22,7 @@ public class LoginUserDetailService implements UserDetailsService {
         return org.springframework.security.core.userdetails.User
                 .withUsername(userInfo.getUserName())
                 .password(userInfo.getPassword())
-                .roles("USER")
+                .authorities(userInfo.getRole().value())
                 .build();
     }
 }

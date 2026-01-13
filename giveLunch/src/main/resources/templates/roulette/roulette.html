@@ -35,12 +35,18 @@
             align-items: start;
         }
 
+        .roulette-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .roulette-container { position: relative; width: 350px; height: 350px; margin: 20px 0; }
         #canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.1, 0, 0, 1); }
         .arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid var(--accent); z-index: 10; }
 
         .spin-btn { padding: 16px 60px; font-size: 18px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3); }
-        #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; }
+        #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; text-align: center;}
 
         .nutrition-card {
             width: 320px;
@@ -50,10 +56,14 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             position: sticky;
             top: 20px;
+            justify-self: end;
         }
+        .nutrition-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
         .nutrition-title { font-weight: 800; font-size: 16px; margin-bottom: 10px; }
         .nutrition-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f2f6; font-size: 14px; }
         .nutrition-row:last-child { border-bottom: none; }
+        .nutrition-image { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+        .nutrition-image.is-hidden { display: none; }
         .muted { color: #636e72; font-size: 13px; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f2f6; font-size: 12px; font-weight: 700; margin-top: 8px; }
         .err { color: #d63031; font-size: 13px; margin-top: 8px; white-space: pre-line; }
@@ -89,7 +99,7 @@
 
 <div class="main-grid">
     <!-- 왼쪽: 룰렛 -->
-    <div>
+    <div class="roulette-panel">
         <div class="roulette-container">
             <div class="arrow"></div>
             <canvas id="canvas" width="400" height="400"></canvas>
@@ -101,7 +111,10 @@
 
     <!-- 오른쪽: 영양정보 -->
     <div class="nutrition-card">
-        <div class="nutrition-title">🍽 영양 정보</div>
+        <div class="nutrition-header">
+            <div class="nutrition-title">🍽 영양 정보</div>
+            <img id="nutrition-image" class="nutrition-image is-hidden" alt="메뉴 이미지">
+        </div>
         <div id="nutrition-content" class="muted">
             룰렛을 돌려서 메뉴를 선택하면 영양 정보가 표시됩니다.
         </div>
@@ -113,6 +126,7 @@
     const ctx = canvas.getContext('2d');
     const resultDiv = document.getElementById('result');
     const nutritionContent = document.getElementById('nutrition-content');
+    const nutritionImage = document.getElementById('nutrition-image');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
@@ -223,10 +237,14 @@
     // 영양정보 렌더링
     // =========================
     function renderNutritionLoading(menuName) {
+        nutritionImage.classList.add('is-hidden');
+        nutritionImage.removeAttribute('src');
         nutritionContent.innerHTML = `<div class="muted">"${menuName}" 영양 정보를 불러오는 중...</div>`;
     }
 
     function renderNutritionError(menuName, message) {
+        nutritionImage.classList.add('is-hidden');
+        nutritionImage.removeAttribute('src');
         nutritionContent.innerHTML = `
       <div><b>${menuName}</b></div>
       <div class="err">${message}</div>
@@ -234,11 +252,20 @@
     }
 
     function renderNutrition(data) {
-        // FoodNutritionResponseDto 예상:
         // { foodId, name, category, servingSizeG, nutrition:{calories,protein,fat,carbohydrate}, source }
+
         const n = data.nutrition ?? {};
         const serving = data.servingSizeG ? `${data.servingSizeG}g` : "-";
         const source = data.source ?? "UNKNOWN";
+        const imgUrl = data.imgUrl ?? "";
+
+        if (imgUrl) {
+            nutritionImage.src = imgUrl;
+            nutritionImage.classList.remove('is-hidden');
+        } else {
+            nutritionImage.classList.add('is-hidden');
+            nutritionImage.removeAttribute('src');
+        }
 
         // BigDecimal이 JSON에서 숫자/문자열로 올 수 있으니 그대로 출력
         nutritionContent.innerHTML = `
@@ -255,14 +282,14 @@
     `;
     }
 
-    // ✅ 최종: /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
+    // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
     async function fetchAndRenderNutrition(menuName) {
         renderNutritionLoading(menuName);
 
         try {
             const url = `/api/foods/getId?name=${encodeURIComponent(menuName)}`;
-            const Idresp = await fetch(url);
-            if (!Idresp.ok) {
+            const idResp = await fetch(url);
+            if (!idResp.ok) {
                 renderNutritionError(menuName, "foodId 조회 실패");
                 return;
             }
