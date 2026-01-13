@@ -1,6 +1,7 @@
 package main.givelunch.config;
 
 import lombok.RequiredArgsConstructor;
+import main.givelunch.model.Role;
 import main.givelunch.properties.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/admin/**").hasAuthority(Role.ADMIN.value())
                         .requestMatchers(permit).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -32,7 +34,15 @@ public class SecurityConfig {
                         .loginPage("/login")    // GET /login -> 내가 만든 페이지
                         .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리(중요)
                         .usernameParameter("userName")
-                        .defaultSuccessUrl("/roulette", true) // 성공 시 이동
+                        .successHandler((request, response, authentication) -> {
+                            boolean isAdmin = authentication.getAuthorities().stream()
+                                    .anyMatch(a -> a.getAuthority().equals(Role.ADMIN.value()));
+                            if (isAdmin) {
+                                response.sendRedirect("/admin");      // 관리자 성공 URL
+                            } else {
+                                response.sendRedirect("/roulette");   // 일반 성공 URL
+                            }
+                        })
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
