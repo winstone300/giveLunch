@@ -3,6 +3,7 @@ package main.givelunch.services.login;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.SignupRequestDto;
 import main.givelunch.entities.UserInfo;
+import main.givelunch.model.Role;
 import main.givelunch.repositories.UserRepository;
 import main.givelunch.validators.SignupValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +25,7 @@ public class SignupService {
                 .userName(req.getUserName())
                 .password(passwordEncoder.encode(req.getPassword()))     // 암호화
                 .email(req.getEmail())
+                .role(Role.USER)
                 .build();
 
         userRepository.save(user);

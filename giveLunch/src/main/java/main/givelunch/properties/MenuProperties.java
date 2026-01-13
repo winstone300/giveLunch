@@ -1,4 +1,4 @@
-package main.givelunch.config;
+package main.givelunch.properties;
 
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;

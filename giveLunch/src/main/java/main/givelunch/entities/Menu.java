@@ -1,5 +1,6 @@
 package main.givelunch.entities;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,10 +12,15 @@ import lombok.Getter;
 @Table(name="menus")
 @Getter
 public class Menu {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+
+    @Column(name = "user_name")
     private String userName;
+
+    @Column(name = "menu_name")
     private String menuName;
 
     public static Menu createMenu(String userName,String menuName){

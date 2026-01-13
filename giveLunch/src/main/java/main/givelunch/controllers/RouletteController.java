@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class RouletteController {
     private final MenuService menuService;
 
-    @GetMapping("/roulette")
+    @GetMapping({"/","/roulette"})
     public String roulette(Principal principal, Model model) {
         boolean isLoggedIn = (principal != null);
         String userName = isLoggedIn ? principal.getName() : "GUEST";

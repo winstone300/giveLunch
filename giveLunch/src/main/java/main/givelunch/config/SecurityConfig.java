@@ -1,5 +1,8 @@
 package main.givelunch.config;
 
+import lombok.RequiredArgsConstructor;
+import main.givelunch.model.Role;
+import main.givelunch.properties.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -8,7 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+    private final SecurityProperties securityProperties;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -16,16 +22,27 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        String[] permit = securityProperties.getPermitAll().toArray(new String[0]);
+
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/roulette","/signup", "/css/**", "/js/**", "/images/**","/error").permitAll()
+                        .requestMatchers("/admin/**").hasAuthority(Role.ADMIN.value())
+                        .requestMatchers(permit).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")    // GET /login -> 내가 만든 페이지
                         .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리(중요)
                         .usernameParameter("userName")
-                        .defaultSuccessUrl("/roulette", true) // 성공 시 이동
+                        .successHandler((request, response, authentication) -> {
+                            boolean isAdmin = authentication.getAuthorities().stream()
+                                    .anyMatch(a -> a.getAuthority().equals(Role.ADMIN.value()));
+                            if (isAdmin) {
+                                response.sendRedirect("/admin");      // 관리자 성공 URL
+                            } else {
+                                response.sendRedirect("/roulette");   // 일반 성공 URL
+                            }
+                        })
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )

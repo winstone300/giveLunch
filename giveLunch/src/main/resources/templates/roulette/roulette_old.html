@@ -6,17 +6,15 @@
     <meta name="_csrf" th:content="${_csrf?.token}">
     <meta name="_csrf_header" th:content="${_csrf?.headerName}">
     <title>오늘 뭐 먹지? - GiveLunch</title>
-
     <style>
+        /* [이전과 동일한 CSS 스타일 유지] */
         :root { --primary: #6c5ce7; --secondary: #a29bfe; --accent: #ff7675; --bg: #f0f3f7; }
         body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background-color: var(--bg); margin: 0; padding: 20px; }
-
-        .header { width: 100%; max-width: 820px; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .header { width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .auth-btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; font-size: 14px; }
         .login-btn { background: var(--primary); color: white; }
         .logout-btn { background: #dfe6e9; color: #636e72; }
-
-        .menu-card { width: 100%; max-width: 820px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .menu-card { width: 100%; max-width: 450px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .menu-title { font-size: 16px; font-weight: 700; margin-bottom: 15px; display: block; }
         #menu-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
         .menu-item { background: #f1f2f6; padding: 6px 12px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
@@ -25,62 +23,17 @@
         input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
         input:focus { border-color: var(--primary); }
         .add-btn { background: #55efc4; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-
-        .main-grid {
-            width: 100%;
-            max-width: 820px;
-            display: grid;
-            grid-template-columns: 1fr 320px;
-            gap: 18px;
-            align-items: start;
-        }
-
-        .roulette-panel {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
         .roulette-container { position: relative; width: 350px; height: 350px; margin: 20px 0; }
         #canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.1, 0, 0, 1); }
         .arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid var(--accent); z-index: 10; }
-
         .spin-btn { padding: 16px 60px; font-size: 18px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3); }
-        #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; text-align: center;}
-
-        .nutrition-card {
-            width: 320px;
-            background: white;
-            padding: 18px;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            position: sticky;
-            top: 20px;
-            justify-self: end;
-        }
-        .nutrition-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-        .nutrition-title { font-weight: 800; font-size: 16px; margin-bottom: 10px; }
-        .nutrition-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f2f6; font-size: 14px; }
-        .nutrition-row:last-child { border-bottom: none; }
-        .nutrition-image { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
-        .nutrition-image.is-hidden { display: none; }
-        .muted { color: #636e72; font-size: 13px; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f2f6; font-size: 12px; font-weight: 700; margin-top: 8px; }
-        .err { color: #d63031; font-size: 13px; margin-top: 8px; white-space: pre-line; }
-
-        @media (max-width: 860px) {
-            .header, .menu-card, .main-grid { max-width: 450px; }
-            .main-grid { grid-template-columns: 1fr; }
-            .nutrition-card { width: 100%; position: static; }
-        }
+        #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; }
     </style>
 </head>
-
 <body>
 
 <div class="header">
-    <div id="status-text"
-         th:text="${isLoggedIn} ? '👤 회원 모드 (' + ${userName} + '님)' : '👋 반갑습니다! (GUEST)'">상태</div>
+    <div id="status-text" th:text="${isLoggedIn} ? '👤 회원 모드 (' + ${userName} + '님)' : '👋 반갑습니다! (GUEST)'">상태</div>
     <a th:if="${!isLoggedIn}" th:href="@{/login}" class="auth-btn login-btn">로그인</a>
     <form th:if="${isLoggedIn}" th:action="@{/logout}" method="post">
         <button type="submit" class="auth-btn logout-btn">로그아웃</button>
@@ -97,36 +50,18 @@
     </div>
 </div>
 
-<div class="main-grid">
-    <!-- 왼쪽: 룰렛 -->
-    <div class="roulette-panel">
-        <div class="roulette-container">
-            <div class="arrow"></div>
-            <canvas id="canvas" width="400" height="400"></canvas>
-        </div>
-
-        <button class="spin-btn" onclick="spinWheel()">룰렛 돌리기!</button>
-        <div id="result"></div>
-    </div>
-
-    <!-- 오른쪽: 영양정보 -->
-    <div class="nutrition-card">
-        <div class="nutrition-header">
-            <div class="nutrition-title">🍽 영양 정보</div>
-            <img id="nutrition-image" class="nutrition-image is-hidden" alt="메뉴 이미지">
-        </div>
-        <div id="nutrition-content" class="muted">
-            룰렛을 돌려서 메뉴를 선택하면 영양 정보가 표시됩니다.
-        </div>
-    </div>
+<div class="roulette-container">
+    <div class="arrow"></div>
+    <canvas id="canvas" width="400" height="400"></canvas>
 </div>
+
+<button class="spin-btn" onclick="spinWheel()">룰렛 돌리기!</button>
+<div id="result"></div>
 
 <script th:inline="javascript">
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const resultDiv = document.getElementById('result');
-    const nutritionContent = document.getElementById('nutrition-content');
-    const nutritionImage = document.getElementById('nutrition-image');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
@@ -136,15 +71,17 @@
     // 게스트라면 LocalStorage 확인 후 덮어쓰기
     if (!isLoggedIn) {
         const localData = localStorage.getItem('guestMenu');
-        if (localData) currentMenu = JSON.parse(localData);
+        if (localData) {
+            currentMenu = JSON.parse(localData);
+        }
     }
 
     function renderMenuList() {
         const listDiv = document.getElementById('menu-list');
         listDiv.innerHTML = currentMenu.map((m, i) =>
             `<div class="menu-item">
-          ${m} <span class="del-btn" onclick="deleteMenu('${m}', ${i})">×</span>
-       </div>`
+                ${m} <span class="del-btn" onclick="deleteMenu('${m}', ${i})">×</span>
+            </div>`
         ).join('');
     }
 
@@ -168,7 +105,9 @@
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
                     body: JSON.stringify({ menuName: menuName })
                 });
-                if (response.ok) currentMenu.push(menuName);
+                if (response.ok) {
+                    currentMenu.push(menuName);
+                }
             } catch (e) { alert("서버 저장 실패!"); return; }
         } else {
             // 게스트: LocalStorage에 저장
@@ -192,7 +131,9 @@
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
                     body: JSON.stringify({ menuName: menuName })
                 });
-                if (response.ok) currentMenu.splice(index, 1);
+                if (response.ok) {
+                    currentMenu.splice(index, 1);
+                }
             } catch (e) { alert("서버 삭제 실패!"); return; }
         } else {
             // 게스트: LocalStorage에서 삭제
@@ -207,12 +148,11 @@
         drawWheel();
     }
 
-    // 룰렛 그리기
+    // [룰렛 그리기 및 애니메이션 로직 - 이전과 동일]
     const colors = ["#6c5ce7", "#74b9ff", "#a29bfe", "#81ecec", "#55efc4", "#fab1a0", "#ff7675", "#fd79a8"];
     function drawWheel() {
         const totalSlices = currentMenu.length;
         const arc = (Math.PI * 2) / totalSlices;
-
         ctx.clearRect(0, 0, 400, 400);
         for (let i = 0; i < totalSlices; i++) {
             const angle = i * arc;
@@ -221,7 +161,6 @@
             ctx.moveTo(200, 200);
             ctx.arc(200, 200, 200, angle, angle + arc);
             ctx.fill();
-
             ctx.save();
             ctx.translate(200 + Math.cos(angle + arc / 2) * 140, 200 + Math.sin(angle + arc / 2) * 140);
             ctx.rotate(angle + arc / 2 + Math.PI / 2);
@@ -233,105 +172,19 @@
         }
     }
 
-    // =========================
-    // 영양정보 렌더링
-    // =========================
-    function renderNutritionLoading(menuName) {
-        nutritionImage.classList.add('is-hidden');
-        nutritionImage.removeAttribute('src');
-        nutritionContent.innerHTML = `<div class="muted">"${menuName}" 영양 정보를 불러오는 중...</div>`;
-    }
-
-    function renderNutritionError(menuName, message) {
-        nutritionImage.classList.add('is-hidden');
-        nutritionImage.removeAttribute('src');
-        nutritionContent.innerHTML = `
-      <div><b>${menuName}</b></div>
-      <div class="err">${message}</div>
-    `;
-    }
-
-    function renderNutrition(data) {
-        // { foodId, name, category, servingSizeG, nutrition:{calories,protein,fat,carbohydrate}, source }
-
-        const n = data.nutrition ?? {};
-        const serving = data.servingSizeG ? `${data.servingSizeG}g` : "-";
-        const source = data.source ?? "UNKNOWN";
-        const imgUrl = data.imgUrl ?? "";
-
-        if (imgUrl) {
-            nutritionImage.src = imgUrl;
-            nutritionImage.classList.remove('is-hidden');
-        } else {
-            nutritionImage.classList.add('is-hidden');
-            nutritionImage.removeAttribute('src');
-        }
-
-        // BigDecimal이 JSON에서 숫자/문자열로 올 수 있으니 그대로 출력
-        nutritionContent.innerHTML = `
-      <div style="font-weight:800; font-size:15px;">${data.name ?? "-"}</div>
-      <div class="muted">${data.category ?? ""}</div>
-
-      <div class="nutrition-row"><span>기준</span><span>${serving}</span></div>
-      <div class="nutrition-row"><span>칼로리</span><span>${n.calories ?? "-"} kcal</span></div>
-      <div class="nutrition-row"><span>탄수화물</span><span>${n.carbohydrate ?? "-"} g</span></div>
-      <div class="nutrition-row"><span>단백질</span><span>${n.protein ?? "-"} g</span></div>
-      <div class="nutrition-row"><span>지방</span><span>${n.fat ?? "-"} g</span></div>
-
-      <div class="badge">SOURCE: ${source}</div>
-    `;
-    }
-
-    // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
-    async function fetchAndRenderNutrition(menuName) {
-        renderNutritionLoading(menuName);
-
-        try {
-            const url = `/api/foods/getId?name=${encodeURIComponent(menuName)}`;
-            const idResp = await fetch(url);
-            if (!idResp.ok) {
-                renderNutritionError(menuName, "foodId 조회 실패");
-                return;
-            }
-
-            const foodId = await idResp.json();
-            const resp = await fetch(`/api/foods/${foodId}/nutrition`);
-            if (!resp.ok) {
-                const text = await resp.text().catch(() => "");
-                renderNutritionError(menuName, `영양정보 조회 실패 (HTTP ${resp.status})\n${text}`);
-                return;
-            }
-
-            const data = await resp.json();
-            renderNutrition(data);
-        } catch (e) {
-            renderNutritionError(menuName, `요청 중 오류가 발생했습니다.\n${e}`);
-        }
-    }
-
-    // =========================
-    // 룰렛 돌리기 -> 결과 -> 영양정보 조회
-    // =========================
     function spinWheel() {
         resultDiv.innerText = "운명의 메뉴는?";
         const randomExtra = Math.floor(Math.random() * 360);
         currentRotation += (1800 + randomExtra);
         canvas.style.transform = `rotate(-${currentRotation}deg)`;
-
         setTimeout(() => {
             const sliceDegree = 360 / currentMenu.length;
             const winnerIndex = Math.floor(((currentRotation % 360 + 270) % 360) / sliceDegree);
-            const winnerName = currentMenu[winnerIndex];
-
-            resultDiv.innerText = `오늘의 메뉴: ${winnerName}!`;
-
-            // ✅ 여기서 영양정보 API 호출
-            fetchAndRenderNutrition(winnerName);
+            resultDiv.innerText = `오늘의 메뉴: ${currentMenu[winnerIndex]}!`;
         }, 4000);
     }
 
     updateGame();
 </script>
-
 </body>
 </html>
