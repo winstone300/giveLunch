@@ -6,13 +6,13 @@ import main.givelunch.dto.FoodNutritionResponseDto;
 import main.givelunch.dto.FoodSearchResponseDto;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/foods")
 public class FoodController {
@@ -27,6 +27,11 @@ public class FoodController {
     @GetMapping("/search")
     public List<FoodSearchResponseDto> search(@RequestParam("keyword") String keyword) {
         return foodSearchService.searchByKeyword(keyword);
+    }
+
+    @GetMapping("/getId")
+    public Long getId(@RequestParam("name") String name) {
+        return foodSearchService.getIdByname(name);
     }
 
 }

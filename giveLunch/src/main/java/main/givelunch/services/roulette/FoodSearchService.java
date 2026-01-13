@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FoodSearchService {
     private final FoodRepository foodRepository;
 
+    //keyword가 들어간 상위 10개 항목 id,name,category 반환
     @Transactional(readOnly = true)
     public List<FoodSearchResponseDto> searchByKeyword(String keyword) {
         String k = keyword == null ? "" : keyword.trim();
@@ -20,5 +21,14 @@ public class FoodSearchService {
         return foodRepository.findTop10ByNameContaining(k).stream()
                 .map(FoodSearchResponseDto::from)
                 .toList();
+    }
+
+    public Long getIdByname(String name){
+        String n = (name==null) ? "" : name.trim();
+        if(n.isEmpty()){
+            throw new IllegalArgumentException("Name cannot be empty");
+        };
+
+        return foodRepository.findIdByNameContaining(name);
     }
 }

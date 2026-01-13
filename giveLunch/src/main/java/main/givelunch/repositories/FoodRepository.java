@@ -9,4 +9,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FoodRepository extends JpaRepository<Food, Long> {
     List<Food> findTop10ByNameContaining(String keyword);
+    Long findIdByNameContaining(String keyword);
 }

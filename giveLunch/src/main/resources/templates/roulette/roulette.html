@@ -255,32 +255,19 @@
     `;
     }
 
-    // ✅ (필요) 이름 -> foodId 해석
-    // 너희 백엔드에 아래 검색 API가 있어야 함:
-    // GET /api/foods/search?keyword=김치찌개  -> [{id,name,category,...}, ...]
-    async function resolveFoodIdByName(menuName) {
-        const url = `/api/foods/search?keyword=${encodeURIComponent(menuName)}`;
-        const resp = await fetch(url);
-        if (!resp.ok) return null;
-
-        const list = await resp.json();
-        if (!Array.isArray(list) || list.length === 0) return null;
-
-        const exact = list.find(x => (x.name ?? "").trim() === menuName.trim());
-        return (exact ?? list[0]).id ?? null;
-    }
-
     // ✅ 최종: /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
     async function fetchAndRenderNutrition(menuName) {
         renderNutritionLoading(menuName);
 
         try {
-            const foodId = await resolveFoodIdByName(menuName);
-            if (!foodId) {
-                renderNutritionError(menuName, "foodId를 찾지 못했습니다. (검색 결과 없음)");
+            const url = `/api/foods/getId?name=${encodeURIComponent(menuName)}`;
+            const Idresp = await fetch(url);
+            if (!Idresp.ok) {
+                renderNutritionError(menuName, "foodId 조회 실패");
                 return;
             }
 
+            const foodId = await idResp.json();
             const resp = await fetch(`/api/foods/${foodId}/nutrition`);
             if (!resp.ok) {
                 const text = await resp.text().catch(() => "");
