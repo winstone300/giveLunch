@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf?.token}">
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}">
+    <title>GiveLunch 관리자 - 데이터베이스 관리</title>
+    <style>
+        :root {
+            font-family: "Pretendard", "Noto Sans KR", sans-serif;
+            color: #1f2937;
+            background-color: #f8fafc;
+        }
+        body {
+            margin: 0;
+            padding: 32px 24px 48px;
+        }
+        h1 {
+            font-size: 26px;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 28px;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 360px) 1fr;
+            gap: 28px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        label {
+            font-size: 13px;
+            color: #475569;
+        }
+        input {
+            border: 1px solid #cbd5f5;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .primary {
+            background: #2563eb;
+            color: #ffffff;
+        }
+        .secondary {
+            background: #e2e8f0;
+            color: #1f2937;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+        }
+        .table-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        .notice {
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 13px;
+        }
+        @media (max-width: 960px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>🍱 foods / nutritions 관리</h1>
+<div class="subtitle">음식 정보와 영양 정보를 등록, 수정, 삭제할 수 있습니다.</div>
+
+<div class="layout">
+    <section class="card">
+        <h2>음식 등록/수정</h2>
+        <form id="food-form">
+            <input type="hidden" id="food-id">
+            <div class="form-group">
+                <label for="food-name">이름 (필수)</label>
+                <input id="food-name" type="text" required placeholder="예: 김치찌개">
+            </div>
+            <div class="form-group">
+                <label for="food-category">카테고리</label>
+                <input id="food-category" type="text" placeholder="예: 한식">
+            </div>
+            <div class="form-group">
+                <label for="food-img">이미지 URL</label>
+                <input id="food-img" type="url" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label for="food-serving">1회 제공량 (g)</label>
+                <input id="food-serving" type="number" min="0" step="1" placeholder="예: 300">
+            </div>
+            <div class="form-group">
+                <label for="food-calories">칼로리 (kcal)</label>
+                <input id="food-calories" type="number" min="0" step="0.01" placeholder="예: 550">
+            </div>
+            <div class="form-group">
+                <label for="food-carb">탄수화물 (g)</label>
+                <input id="food-carb" type="number" min="0" step="0.01" placeholder="예: 60">
+            </div>
+            <div class="form-group">
+                <label for="food-protein">단백질 (g)</label>
+                <input id="food-protein" type="number" min="0" step="0.01" placeholder="예: 25">
+            </div>
+            <div class="form-group">
+                <label for="food-fat">지방 (g)</label>
+                <input id="food-fat" type="number" min="0" step="0.01" placeholder="예: 18">
+            </div>
+            <div class="actions">
+                <button class="primary" type="submit">저장</button>
+                <button class="secondary" type="button" id="reset-btn">초기화</button>
+            </div>
+        </form>
+        <div class="notice" id="form-status"></div>
+    </section>
+
+    <section class="card">
+        <h2>등록된 음식 목록</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>이름</th>
+                <th>카테고리</th>
+                <th>칼로리</th>
+                <th>액션</th>
+            </tr>
+            </thead>
+            <tbody id="food-table-body"></tbody>
+        </table>
+        <div class="notice">표시되는 칼로리는 1회 제공량 기준입니다.</div>
+    </section>
+</div>
+
+<script>
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+    const form = document.getElementById('food-form');
+    const formStatus = document.getElementById('form-status');
+    const tableBody = document.getElementById('food-table-body');
+
+    const fields = {
+        id: document.getElementById('food-id'),
+        name: document.getElementById('food-name'),
+        category: document.getElementById('food-category'),
+        imgUrl: document.getElementById('food-img'),
+        servingSizeG: document.getElementById('food-serving'),
+        calories: document.getElementById('food-calories'),
+        carbohydrate: document.getElementById('food-carb'),
+        protein: document.getElementById('food-protein'),
+        fat: document.getElementById('food-fat')
+    };
+
+    const request = (url, options = {}) => {
+        const headers = options.headers ? {...options.headers} : {};
+        if (csrfToken && csrfHeader && options.method && options.method !== 'GET') {
+            headers[csrfHeader] = csrfToken;
+        }
+        return fetch(url, {...options, headers});
+    };
+
+    const getPayload = () => ({
+        name: fields.name.value.trim(),
+        category: fields.category.value.trim() || null,
+        imgUrl: fields.imgUrl.value.trim() || null,
+        servingSizeG: fields.servingSizeG.value ? Number(fields.servingSizeG.value) : null,
+        nutrition: {
+            calories: fields.calories.value ? Number(fields.calories.value) : null,
+            carbohydrate: fields.carbohydrate.value ? Number(fields.carbohydrate.value) : null,
+            protein: fields.protein.value ? Number(fields.protein.value) : null,
+            fat: fields.fat.value ? Number(fields.fat.value) : null
+        }
+    });
+
+    const resetForm = () => {
+        form.reset();
+        fields.id.value = '';
+        formStatus.textContent = '';
+    };
+
+    const renderRows = (foods) => {
+        tableBody.innerHTML = '';
+        foods.forEach((food) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${food.id}</td>
+                <td>${food.name}</td>
+                <td>${food.category ?? '-'}</td>
+                <td>${food.nutrition?.calories ?? '-'}</td>
+                <td class="table-actions">
+                    <button class="secondary" data-action="edit">수정</button>
+                    <button class="danger" data-action="delete">삭제</button>
+                </td>
+            `;
+
+            row.querySelector('[data-action="edit"]').addEventListener('click', async () => {
+                fields.id.value = food.id;
+                fields.name.value = food.name ?? '';
+                fields.category.value = food.category ?? '';
+                fields.imgUrl.value = food.imgUrl ?? '';
+                fields.servingSizeG.value = food.servingSizeG ?? '';
+                fields.calories.value = '';
+                fields.carbohydrate.value = '';
+                fields.protein.value = '';
+                fields.fat.value = '';
+                formStatus.textContent = `ID ${food.id} 영양 정보 불러오는 중...`;
+
+                const nutrition = await loadNutrition(food.id);
+                if (nutrition) {
+                    fields.calories.value = nutrition.calories ?? '';
+                    fields.carbohydrate.value = nutrition.carbohydrate ?? '';
+                    fields.protein.value = nutrition.protein ?? '';
+                    fields.fat.value = nutrition.fat ?? '';
+                    formStatus.textContent = `ID ${food.id} 수정 중`;
+                } else {
+                    formStatus.textContent = `ID ${food.id} 수정 중 (영양 정보 없음)`;
+                }
+            });
+
+            row.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+                if (!confirm(`${food.name} 항목을 삭제할까요?`)) {
+                    return;
+                }
+                const resp = await request(`/api/admin/foods/${food.id}`, {method: 'DELETE'});
+                if (!resp.ok) {
+                    formStatus.textContent = '삭제에 실패했습니다.';
+                    return;
+                }
+                formStatus.textContent = '삭제 완료';
+                await loadFoods();
+                if (fields.id.value === String(food.id)) {
+                    resetForm();
+                }
+            });
+
+            tableBody.appendChild(row);
+        });
+    };
+
+    const loadFoods = async () => {
+        const resp = await fetch('/api/admin/foods');
+        if (!resp.ok) {
+            formStatus.textContent = '목록을 불러오지 못했습니다.';
+            return;
+        }
+        const data = await resp.json();
+        renderRows(data);
+    };
+
+    const loadNutrition = async (foodId) => {
+        const resp = await fetch(`/api/foods/${foodId}/nutrition`);
+        if (!resp.ok) {
+            return null;
+        }
+        const data = await resp.json();
+        return data.nutrition ?? null;
+    };
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = getPayload();
+
+        if (!payload.name) {
+            formStatus.textContent = '이름을 입력해주세요.';
+            return;
+        }
+
+        const id = fields.id.value;
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/admin/foods/${id}` : '/api/admin/foods';
+        const resp = await request(url, {
+            method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+            const message = await resp.text();
+            formStatus.textContent = message || '저장에 실패했습니다.';
+            return;
+        }
+        formStatus.textContent = id ? '수정 완료' : '등록 완료';
+        resetForm();
+        await loadFoods();
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', resetForm);
+
+    loadFoods();
+</script>
+</body>
+</html>

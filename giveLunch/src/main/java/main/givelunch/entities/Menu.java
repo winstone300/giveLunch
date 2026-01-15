@@ -23,7 +23,7 @@ public class Menu {
     @Column(name = "menu_name")
     private String menuName;
 
-    public static Menu createMenu(String userName,String menuName){
+    public static Menu of(String userName,String menuName){
         Menu menu = new Menu();
         menu.userName = userName;
         menu.menuName = menuName;
