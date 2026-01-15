@@ -2,15 +2,13 @@ package main.givelunch.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodDto;
 
 @Entity
 @Table(name="foods")
@@ -29,4 +27,31 @@ public class Food {
 
     @Column(name = "serving_sizeg")
     private Integer servingSizeG;
+
+    public static Food from(FoodDto foodDto){
+        Food food = new Food();
+        food.id =  foodDto.getId();
+        food.name = foodDto.getName();
+        food.category = foodDto.getCategory();
+        food.imgUrl = foodDto.getImgUrl();
+        food.servingSizeG = foodDto.getServingSizeG();
+        return food;
+    }
+
+    public static Food from(FoodAndNutritionDto foodAndNutritionDto){
+        Food food = new Food();
+        food.id = foodAndNutritionDto.getFoodId();
+        food.name = foodAndNutritionDto.getName();
+        food.category = foodAndNutritionDto.getCategory();
+        food.imgUrl = foodAndNutritionDto.getImgUrl();
+        food.servingSizeG = foodAndNutritionDto.getServingSizeG();
+        return food;
+    }
+
+    public void updateFood(FoodAndNutritionDto foodAndNutritionDto){
+        this.name = foodAndNutritionDto.getName();
+        this.category = foodAndNutritionDto.getCategory();
+        this.imgUrl = foodAndNutritionDto.getImgUrl();
+        this.servingSizeG = foodAndNutritionDto.getServingSizeG();
+    }
 }

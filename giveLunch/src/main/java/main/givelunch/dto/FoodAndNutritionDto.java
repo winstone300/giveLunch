@@ -2,10 +2,14 @@ package main.givelunch.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @AllArgsConstructor(staticName = "of")
-public class FoodNutritionResponseDto {
+@Setter
+@NoArgsConstructor
+public class FoodAndNutritionDto {
     private Long foodId;
     private String name;
     private String category;

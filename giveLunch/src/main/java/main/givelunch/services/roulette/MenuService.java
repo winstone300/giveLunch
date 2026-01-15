@@ -39,7 +39,7 @@ public class MenuService {
     }
 
     public void saveMenu(String userName, String menuName) {
-        Menu menu = Menu.createMenu(userName,menuName);
+        Menu menu = Menu.of(userName,menuName);
         menuRepository.save(menu);
     }
 

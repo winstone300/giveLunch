@@ -1,9 +1,7 @@
 package main.givelunch.controllers;
 
-import java.util.List;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodNutritionResponseDto;
-import main.givelunch.dto.FoodSearchResponseDto;
+import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +18,7 @@ public class FoodController {
     private final FoodSearchService foodSearchService;
 
     @GetMapping("/{foodId}/nutrition")
-    public FoodNutritionResponseDto getFoodNutrition(@PathVariable Long foodId) {
+    public FoodAndNutritionDto getFoodNutrition(@PathVariable Long foodId) {
         return foodNutritionService.getFoodNutrition(foodId);
     }
 

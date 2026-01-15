@@ -10,6 +10,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.Getter;
+import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.NutritionDto;
 
 @Entity
 @Table(name="nutritions")
@@ -35,4 +37,23 @@ public class Nutrition {
 
     @Column(precision = 8, scale = 2)
     private BigDecimal fat;
+
+    public static Nutrition from(Food food,FoodAndNutritionDto foodAndNutritionDto){
+        NutritionDto nutritionDto = foodAndNutritionDto.getNutrition();
+        Nutrition nutrition = new Nutrition();
+        nutrition.food = food;
+        nutrition.calories = nutritionDto.getCalories();
+        nutrition.carbohydrate = nutritionDto.getCarbohydrate();
+        nutrition.protein = nutritionDto.getProtein();
+        nutrition.fat = nutritionDto.getFat();
+        return nutrition;
+    }
+
+    public void updateNutrition(FoodAndNutritionDto foodAndNutritionDto){
+        NutritionDto nutritionDto = foodAndNutritionDto.getNutrition();
+        this.calories = nutritionDto.getCalories();
+        this.carbohydrate = nutritionDto.getCarbohydrate();
+        this.protein = nutritionDto.getProtein();
+        this.fat = nutritionDto.getFat();
+    }
 }

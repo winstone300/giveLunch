@@ -1,7 +1,7 @@
 package main.givelunch.services.roulette;
 
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodNutritionResponseDto;
+import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
@@ -17,14 +17,14 @@ public class FoodNutritionService {
     private final NutritionRepository nutritionRepository;
 
     @Transactional(readOnly = true)
-    public FoodNutritionResponseDto getFoodNutrition(Long foodId) {
+    public FoodAndNutritionDto getFoodNutrition(Long foodId) {
         Food food = foodRepository.findById(foodId)
                 .orElseThrow(() -> new IllegalArgumentException("FOOD_NOT_FOUND: " + foodId));
 
         Nutrition nutrition = nutritionRepository.findByFoodId(foodId)
                 .orElseThrow(() -> new IllegalArgumentException("NUTRITION_NOT_FOUND: " + foodId));
 
-        return FoodNutritionResponseDto.of(
+        return FoodAndNutritionDto.of(
                 food.getId(),
                 food.getName(),
                 food.getCategory(),
