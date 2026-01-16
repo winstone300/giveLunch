@@ -21,8 +21,15 @@ public class FoodNutritionService {
         Food food = foodRepository.findById(foodId)
                 .orElseThrow(() -> new IllegalArgumentException("FOOD_NOT_FOUND: " + foodId));
 
-        Nutrition nutrition = nutritionRepository.findByFoodId(foodId)
-                .orElseThrow(() -> new IllegalArgumentException("NUTRITION_NOT_FOUND: " + foodId));
+        // 영양정보가 안들어가 있으면 null
+        Nutrition nutrition = nutritionRepository.findByFoodId(foodId).orElse(null);
+
+        NutritionDto nutritionDto = (nutrition == null) ? null : NutritionDto.of(
+                nutrition.getCalories(),
+                nutrition.getProtein(),
+                nutrition.getFat(),
+                nutrition.getCarbohydrate()
+        );
 
         return FoodAndNutritionDto.of(
                 food.getId(),
@@ -30,12 +37,7 @@ public class FoodNutritionService {
                 food.getCategory(),
                 food.getImgUrl(),
                 food.getServingSizeG(),
-                NutritionDto.of(
-                        nutrition.getCalories(),
-                        nutrition.getProtein(),
-                        nutrition.getFat(),
-                        nutrition.getCarbohydrate()
-                ),
+                nutritionDto,
                 "INTERNAL_DB"
         );
     }
