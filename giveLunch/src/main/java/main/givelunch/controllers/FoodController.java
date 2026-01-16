@@ -24,7 +24,7 @@ public class FoodController {
 
     @GetMapping("/getId")
     public Long getId(@RequestParam("name") String name) {
-        return foodSearchService.getIdByname(name);
+        return foodSearchService.getIdByName(name);
     }
 
 }
