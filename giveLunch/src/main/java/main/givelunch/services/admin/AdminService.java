@@ -52,7 +52,7 @@ public class AdminService {
     }
 
     public void saveNutrition(Food food,FoodAndNutritionDto foodAndNutritionDto){
-        if(foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;
+        if(foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;  // 조건 수정 필요
         Nutrition nutrition = Nutrition.from(food, foodAndNutritionDto);
         nutritionRepository.save(nutrition);
     }
