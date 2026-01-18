@@ -41,12 +41,16 @@ public class Nutrition {
     public static Nutrition from(Food food,FoodAndNutritionDto foodAndNutritionDto){
         NutritionDto nutritionDto = foodAndNutritionDto.getNutrition();
         Nutrition nutrition = new Nutrition();
-        nutrition.food = food;
+        nutrition.setFood(food);
         nutrition.calories = nutritionDto.getCalories();
         nutrition.carbohydrate = nutritionDto.getCarbohydrate();
         nutrition.protein = nutritionDto.getProtein();
         nutrition.fat = nutritionDto.getFat();
         return nutrition;
+    }
+
+    public void setFood(Food food) {
+        this.food = food;
     }
 
     public void updateNutrition(FoodAndNutritionDto foodAndNutritionDto){
