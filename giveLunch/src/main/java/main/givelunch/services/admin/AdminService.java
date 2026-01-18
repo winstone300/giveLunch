@@ -32,8 +32,8 @@ public class AdminService {
     }
 
     public void deleteFoodsAndNutritions(Long id){
-        deleteFoods(id);
         deleteNutritions(id);
+        deleteFoods(id);
     }
 
     public void deleteFoods(Long id){
@@ -52,7 +52,7 @@ public class AdminService {
     }
 
     public void saveNutrition(Food food,FoodAndNutritionDto foodAndNutritionDto){
-        if(foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;
+        if(!foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;
         Nutrition nutrition = Nutrition.from(food, foodAndNutritionDto);
         nutritionRepository.save(nutrition);
     }
@@ -67,8 +67,8 @@ public class AdminService {
 
     @Transactional
     public void updateNutrition(Long id,Food food,FoodAndNutritionDto foodAndNutritionDto){
-        boolean hasNutrition = foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto);
-        Nutrition nutrition = nutritionRepository.findByFoodId(id).orElse(null);
+        boolean hasNutrition = foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto);  //update할 nutrition
+        Nutrition nutrition = nutritionRepository.findByFoodId(id).orElse(null);    // 기존 nutrition
         if(hasNutrition){
             //기존에 정보가 있으면 update 아니면 새로 생성
             if(nutrition==null){
