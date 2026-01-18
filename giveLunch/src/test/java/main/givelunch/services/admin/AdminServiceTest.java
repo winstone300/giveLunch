@@ -87,28 +87,11 @@ class AdminServiceTest {
         Long foodId = 10L;
         Nutrition nutrition = mock(Nutrition.class);
 
-        when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.of(nutrition));
-
         //when
         adminService.deleteFoodsAndNutritions(foodId);
 
         //then
         verify(foodRepository).deleteById(foodId);
-        verify(nutritionRepository).delete(nutrition);
-    }
-
-    @Test
-    @DisplayName("deleteNutritions() - nutrition이 없으면 삭제하지 않음")
-    void deleteNutritions_doesNothingWhenMissing() {
-        //given
-        Long foodId = 20L;
-        when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
-
-        //when
-        adminService.deleteNutritions(foodId);
-
-        //then
-        verify(nutritionRepository, never()).delete(any(Nutrition.class));
     }
 
     @Test

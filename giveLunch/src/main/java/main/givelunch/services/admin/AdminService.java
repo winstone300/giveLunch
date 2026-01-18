@@ -32,16 +32,7 @@ public class AdminService {
     }
 
     public void deleteFoodsAndNutritions(Long id){
-        deleteNutritions(id);
-        deleteFoods(id);
-    }
-
-    public void deleteFoods(Long id){
         foodRepository.deleteById(id);
-    }
-
-    public void deleteNutritions(Long id){
-        nutritionRepository.findByFoodId(id).ifPresent(nutritionRepository::delete);
     }
 
     public Food saveFood(FoodAndNutritionDto foodAndNutritionDto){
@@ -54,6 +45,7 @@ public class AdminService {
     public void saveNutrition(Food food,FoodAndNutritionDto foodAndNutritionDto){
         if(!foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;
         Nutrition nutrition = Nutrition.from(food, foodAndNutritionDto);
+        food.setNutrition(nutrition);
         nutritionRepository.save(nutrition);
     }
 
@@ -76,6 +68,7 @@ public class AdminService {
             }else{
                 nutrition.updateNutrition(foodAndNutritionDto);
             }
+            food.setNutrition(nutrition);
             nutritionRepository.save(nutrition);
         }
     }
