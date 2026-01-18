@@ -34,3 +34,4 @@ build/
 
 # Spring
 application-*.yml
+!src/test/resources/application-test.yml

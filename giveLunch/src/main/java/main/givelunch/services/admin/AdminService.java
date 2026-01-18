@@ -32,8 +32,8 @@ public class AdminService {
     }
 
     public void deleteFoodsAndNutritions(Long id){
-        deleteFoods(id);
         deleteNutritions(id);
+        deleteFoods(id);
     }
 
     public void deleteFoods(Long id){
