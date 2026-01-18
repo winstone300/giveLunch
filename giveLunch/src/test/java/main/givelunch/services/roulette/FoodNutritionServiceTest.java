@@ -45,7 +45,7 @@ class FoodNutritionServiceTest {
     }
 
     @Test
-    @DisplayName("getFoodNutrition() - nutrition이 없으면 NUTRITION_NOT_FOUND 예외")
+    @DisplayName("getFoodNutrition() - nutrition이 없으면 nutrition에 null반환")
     void getFoodNutrition_throwsWhenNutritionMissing() {
         // given
         Long foodId = 200L;
@@ -54,10 +54,11 @@ class FoodNutritionServiceTest {
         when(foodRepository.findById(foodId)).thenReturn(Optional.of(food));
         when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
 
-        // when & then
-        assertThatThrownBy(() -> foodNutritionService.getFoodNutrition(foodId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("NUTRITION_NOT_FOUND: " + foodId);
+        // when
+        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
+
+        // then
+        assertThat(result.getNutrition()).isNull();
     }
 
     @Test
