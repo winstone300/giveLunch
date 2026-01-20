@@ -2,8 +2,10 @@ package main.givelunch.controllers;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodIdResponseDto;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,8 +25,9 @@ public class FoodController {
     }
 
     @GetMapping("/getId")
-    public Long getId(@RequestParam("name") String name) {
-        return foodSearchService.getIdByName(name);
+    public ResponseEntity<FoodIdResponseDto> getId(@RequestParam("name") String name) {
+        Long id = foodSearchService.getIdByName(name);
+        return ResponseEntity.ok(new FoodIdResponseDto(id));
     }
 
 }
