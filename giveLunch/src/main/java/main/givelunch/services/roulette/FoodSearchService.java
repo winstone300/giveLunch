@@ -25,41 +25,16 @@ public class FoodSearchService {
      */
     @Transactional
     public Long getIdByName(String name){
-        // <--!db에 결과가 없는 경우는 추후에 처리-->
         String normalized = (name == null) ? null : name.trim();
         if(!foodNameValidator.isValid(normalized)) return null;
 
-        // 1) 로컬 DB에서 먼저 조회
+        // db에 없으면 null 값 반환
         Long existingId = foodRepository
                 .findIdByNameContaining(normalized, PageRequest.of(0, 1))
                 .stream()
                 .findFirst()
                 .orElse(null);
 
-        if (existingId != null) {
-            return existingId;
-        }
-
-        // 2) 로컬에 없으면 외부 API에서 조회 후 저장
-        return dataGoKrFoodClient.fetchFoodByName(normalized)
-                .map(this::saveExternalFood)
-                .orElse(null);
-    }
-
-    /**
-     * 외부 API에서 받은 결과를 로컬 DB에 저장하고 ID를 반환한다.
-     */
-    private Long saveExternalFood(FoodAndNutritionDto dto) {
-        Food existing = foodRepository.findByName(dto.getName()).orElse(null);
-        if (existing != null) {
-            return existing.getId();
-        }
-
-        Food food = foodRepository.save(Food.from(dto));
-        if (dto.getNutrition() != null) {
-            Nutrition nutrition = Nutrition.from(food, dto);
-            nutritionRepository.save(nutrition);
-        }
-        return food.getId();
+        return existingId;
     }
 }

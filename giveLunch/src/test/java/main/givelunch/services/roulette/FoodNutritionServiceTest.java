@@ -55,7 +55,7 @@ class FoodNutritionServiceTest {
         when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
 
         // when
-        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
+        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId).orElse(null);
 
         // then
         assertThat(result.getNutrition()).isNull();
@@ -85,7 +85,7 @@ class FoodNutritionServiceTest {
         when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.of(nutrition));
 
         // when
-        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
+        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId).orElse(null);
 
         // then
         assertThat(result.getFoodId()).isEqualTo(foodId);

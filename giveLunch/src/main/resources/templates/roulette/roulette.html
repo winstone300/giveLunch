@@ -294,10 +294,18 @@
                 return;
             }
 
-            const idData = await idResp.json();
-            const foodId = idData?.id;
+            const idData = await idResp.text();
+            const foodId = Number(idData);
             if (!foodId) {
-                renderNutritionError(menuName, "foodId 조회 결과가 없습니다.");
+                const externalResp = await fetch(`/api/foods/external?name=${encodeURIComponent(menuName)}`);
+                if (!externalResp.ok) {
+                    renderNutritionError(menuName, "foodId 조회 결과가 없습니다.");
+                    return;
+                }
+
+                const externalData = await externalResp.json();
+
+                renderNutrition(externalData);
                 return;
             }
             const resp = await fetch(`/api/foods/${foodId}/nutrition`);
