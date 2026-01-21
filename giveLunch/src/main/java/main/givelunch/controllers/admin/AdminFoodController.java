@@ -6,7 +6,6 @@ import main.givelunch.dto.FoodDto;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.services.admin.AdminService;
-import main.givelunch.validators.FoodAndNutritionDtoValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminFoodController {
     private final AdminService adminService;
 
+    //post,put,delete에 상태코드 추가 필요
     @GetMapping
     public List<FoodDto> loadFoods() {
         return adminService.loadFoods();
@@ -35,9 +35,8 @@ public class AdminFoodController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
-    public void createFoodAndNut(@RequestBody FoodAndNutritionDto request) {
-        Food food = adminService.saveFood(request);
-        adminService.saveNutrition(food,request);
+    public void createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
+        Food food = adminService.saveFoodAndNutrition(request);
     }
 
     @DeleteMapping("/{id}")

@@ -20,6 +20,7 @@ public class Food {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // name 중복 허용할지?
     @Column(nullable = false, unique = true)
     private String name;
     private String category;
@@ -57,6 +58,10 @@ public class Food {
         food.category = foodAndNutritionDto.getCategory();
         food.imgUrl = foodAndNutritionDto.getImgUrl();
         food.servingSizeG = foodAndNutritionDto.getServingSizeG();
+        if(foodAndNutritionDto.getNutrition() != null){
+            Nutrition nutrition = Nutrition.from(food,foodAndNutritionDto);
+            food.setNutrition(nutrition);
+        }
         return food;
     }
 

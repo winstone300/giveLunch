@@ -95,8 +95,8 @@ class AdminServiceTest {
     }
 
     @Test
-    @DisplayName("saveFood() - validator 호출 후 저장")
-    void saveFood_savesAfterValidation() {
+    @DisplayName("saveFoodAndNutrition() - validator 호출 후 저장")
+    void saveFood_AndNutrition_savesAfterValidation() {
         //given
         FoodAndNutritionDto dto = new FoodAndNutritionDto();
         dto.setFoodId(3L);
@@ -108,7 +108,7 @@ class AdminServiceTest {
         ArgumentCaptor<Food> captor = ArgumentCaptor.forClass(Food.class);
 
         //when
-        adminService.saveFood(dto);
+        adminService.saveFoodAndNutrition(dto);
 
         //then
         verify(foodAndNutritionDtoValidator).hasName(dto);
@@ -119,46 +119,49 @@ class AdminServiceTest {
     }
 
     @Test
-    @DisplayName("saveNutrition() - hasNutrition이 false면 저장하지 않음")
+    @DisplayName("saveNutrition() - hasNutrition이 null이면 저장하지 않음")
     void saveNutrition_skipsWhenHasNutritionTrue() {
         //given
-        Food food = mock(Food.class);
         FoodAndNutritionDto dto = new FoodAndNutritionDto();
-
-        when(foodAndNutritionDtoValidator.hasNutrition(dto)).thenReturn(false);
+        dto.setFoodId(3L);
+        dto.setName("파스타");
+        dto.setCategory("양식");
+        dto.setImgUrl("img");
+        dto.setServingSizeG(250);
 
         //when
-        adminService.saveNutrition(food, dto);
+        adminService.saveFoodAndNutrition(dto);
 
         //then
         verify(nutritionRepository, never()).save(any(Nutrition.class));
     }
 
     @Test
-    @DisplayName("saveNutrition() - hasNutrition이 true면 저장")
-    void saveNutrition_savesWhenHasNutritionFalse() {
-        //given
-        Food food = mock(Food.class);
+    @DisplayName("saveFoodAndNutrition: 영양 정보가 포함된 경우 Food와 함께 Nutrition이 저장") // 이름 수정 권장
+    void saveFoodAndNutrition_savesFoodWithNutrition() {
+        // given
         NutritionDto nutritionDto = NutritionDto.of(
                 new BigDecimal("100"),
                 new BigDecimal("10"),
                 new BigDecimal("3"),
                 new BigDecimal("20"));
+
         FoodAndNutritionDto dto = new FoodAndNutritionDto();
+        dto.setName("테스트음식");
         dto.setNutrition(nutritionDto);
 
-        when(foodAndNutritionDtoValidator.hasNutrition(dto)).thenReturn(true);
+        ArgumentCaptor<Food> foodCaptor = ArgumentCaptor.forClass(Food.class);
 
+        // when
+        adminService.saveFoodAndNutrition(dto);
 
-        ArgumentCaptor<Nutrition> captor = ArgumentCaptor.forClass(Nutrition.class);
+        // then
+        verify(foodRepository).save(foodCaptor.capture());
+        verify(nutritionRepository, never()).save(any());   // food 저장시 자동으로 nutrition도 저장되는 방식
 
-        //when
-        adminService.saveNutrition(food, dto);
-
-        //then
-        verify(nutritionRepository).save(captor.capture());
-        Nutrition saved = captor.getValue();
-        assertThat(saved.getCalories()).isEqualTo(new BigDecimal("100"));
+        Food savedFood = foodCaptor.getValue();
+        assertThat(savedFood.getNutrition()).isNotNull();
+        assertThat(savedFood.getNutrition().getCalories()).isEqualTo(new BigDecimal("100"));
     }
 
     @Test

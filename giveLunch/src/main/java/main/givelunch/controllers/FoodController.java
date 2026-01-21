@@ -20,6 +20,7 @@ public class FoodController {
     private final FoodSearchService foodSearchService;
     private final DataGoKrFoodClient dataGoKrFoodClient;
 
+    // get요청은 굳이 ResponseEntity로 안감싸도 될거같음
     @GetMapping("/{foodId}/nutrition")
     public ResponseEntity<FoodAndNutritionDto> getFoodNutrition(@PathVariable Long foodId) {
         FoodAndNutritionDto dto = foodNutritionService.getFoodNutrition(foodId).orElse(null);

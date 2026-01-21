@@ -4,12 +4,10 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
-import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
-import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.validators.FoodAndNutritionDtoValidator;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -35,18 +33,11 @@ public class AdminService {
         foodRepository.deleteById(id);
     }
 
-    public Food saveFood(FoodAndNutritionDto foodAndNutritionDto){
+    public Food saveFoodAndNutrition(FoodAndNutritionDto foodAndNutritionDto){
         foodAndNutritionDtoValidator.hasName(foodAndNutritionDto);
         Food food = Food.from(foodAndNutritionDto);
         foodRepository.save(food);
         return food;
-    }
-
-    public void saveNutrition(Food food,FoodAndNutritionDto foodAndNutritionDto){
-        if(!foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto)) return;
-        Nutrition nutrition = Nutrition.from(food, foodAndNutritionDto);
-        food.setNutrition(nutrition);
-        nutritionRepository.save(nutrition);
     }
 
     @Transactional
