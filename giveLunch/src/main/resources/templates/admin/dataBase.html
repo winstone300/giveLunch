@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +15,18 @@
         body {
             margin: 0;
             padding: 32px 24px 48px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        .logout-btn {
+            background: #e2e8f0;
+            color: #1f2937;
+            font-weight: 600;
         }
         h1 {
             font-size: 26px;
@@ -40,6 +52,15 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 12px;
+        }
+        .search-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .search-group input {
+            flex: 1;
         }
         label {
             font-size: 13px;
@@ -106,12 +127,26 @@
     </style>
 </head>
 <body>
-<h1>🍱 foods / nutritions 관리</h1>
+<div class="header">
+    <h1>🍱 foods / nutritions 관리</h1>
+    <form th:action="@{/logout}" method="post">
+        <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}">
+        <button type="submit" class="logout-btn">로그아웃</button>
+    </form>
+</div>
 <div class="subtitle">음식 정보와 영양 정보를 등록, 수정, 삭제할 수 있습니다.</div>
 
 <div class="layout">
     <section class="card">
         <h2>음식 등록/수정</h2>
+        <div class="form-group">
+            <label for="food-search">외부 데이터 검색</label>
+            <div class="search-group">
+                <input id="food-search" type="text" placeholder="예: 김치찌개">
+                <button class="secondary" type="button" id="search-btn">검색</button>
+            </div>
+            <div class="notice" id="search-status"></div>
+        </div>
         <form id="food-form">
             <input type="hidden" id="food-id">
             <div class="form-group">
@@ -159,10 +194,8 @@
         <table>
             <thead>
             <tr>
-                <th>ID</th>
                 <th>이름</th>
                 <th>카테고리</th>
-                <th>칼로리</th>
                 <th>액션</th>
             </tr>
             </thead>
@@ -178,6 +211,9 @@
     const form = document.getElementById('food-form');
     const formStatus = document.getElementById('form-status');
     const tableBody = document.getElementById('food-table-body');
+    const searchInput = document.getElementById('food-search');
+    const searchButton = document.getElementById('search-btn');
+    const searchStatus = document.getElementById('search-status');
 
     const fields = {
         id: document.getElementById('food-id'),
@@ -218,15 +254,44 @@
         formStatus.textContent = '';
     };
 
+    const applyExternalFood = (dto) => {
+        fields.id.value = '';
+        fields.name.value = dto.name ?? '';
+        fields.category.value = dto.category ?? '';
+        fields.imgUrl.value = dto.imgUrl ?? '';
+        fields.servingSizeG.value = dto.servingSizeG ?? '';
+        fields.calories.value = dto.nutrition?.calories ?? '';
+        fields.carbohydrate.value = dto.nutrition?.carbohydrate ?? '';
+        fields.protein.value = dto.nutrition?.protein ?? '';
+        fields.fat.value = dto.nutrition?.fat ?? '';
+    };
+
+    const searchExternalFood = async () => {
+        const name = searchInput.value.trim();
+        if (!name) {
+            searchStatus.textContent = '검색할 음식 이름을 입력해주세요.';
+            return;
+        }
+        searchStatus.textContent = '외부 데이터 조회 중...';
+        const resp = await fetch(`/api/foods/external?name=${encodeURIComponent(name)}`);
+        if (!resp.ok) {
+            searchStatus.textContent = '검색 결과가 없습니다.';
+            return;
+        }
+        const data = await resp.json();
+        applyExternalFood(data);
+        formStatus.textContent = '외부 데이터 불러오기 완료';
+        searchStatus.textContent = '검색 완료';
+    };
+
+
     const renderRows = (foods) => {
         tableBody.innerHTML = '';
         foods.forEach((food) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${food.id}</td>
                 <td>${food.name}</td>
                 <td>${food.category ?? '-'}</td>
-                <td>${food.nutrition?.calories ?? '-'}</td>
                 <td class="table-actions">
                     <button class="secondary" data-action="edit">수정</button>
                     <button class="danger" data-action="delete">삭제</button>
@@ -325,6 +390,13 @@
     });
 
     document.getElementById('reset-btn').addEventListener('click', resetForm);
+    searchButton.addEventListener('click', searchExternalFood);
+    searchInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchExternalFood();
+        }
+    });
 
     loadFoods();
 </script>
