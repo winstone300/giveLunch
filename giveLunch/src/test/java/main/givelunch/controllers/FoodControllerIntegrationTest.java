@@ -68,7 +68,7 @@ class FoodControllerIntegrationTest {
         // when & then
         mockMvc.perform(get("/api/foods/getId").param("name", "우동"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(food.getId()));
+                .andExpect(content().string(String.valueOf(food.getId())));
     }
 
     private FoodAndNutritionDto sampleFoodDto(String name, String category, int calories) {
