@@ -1,17 +1,20 @@
 package main.givelunch.controllers;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
+import main.givelunch.services.external.DataGoKrFoodClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,9 @@ class FoodControllerIntegrationTest {
     @Autowired
     private NutritionRepository nutritionRepository;
 
+    @MockitoBean
+    private DataGoKrFoodClient dataGoKrFoodClient;
+
     @Test
     @WithMockUser
     @DisplayName("GET /api/foods/{foodId}/nutrition: 음식과 영양 정보를 조회")
@@ -44,7 +51,6 @@ class FoodControllerIntegrationTest {
         // given
         FoodAndNutritionDto request = sampleFoodDto("김치찌개", "한식", 320);
         Food food = foodRepository.save(Food.from(request));
-        nutritionRepository.save(Nutrition.from(food, request));
 
         // when & then
         mockMvc.perform(get("/api/foods/{foodId}/nutrition", food.getId()))
@@ -69,6 +75,33 @@ class FoodControllerIntegrationTest {
         mockMvc.perform(get("/api/foods/getId").param("name", "우동"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(String.valueOf(food.getId())));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("GET /api/foods/external: 외부 API에서 음식 정보를 조회")
+    void getExternalFoodReturnsFoodAndNutrition() throws Exception {
+        FoodAndNutritionDto externalDto = sampleFoodDto("치킨", "양식", 420);
+
+        when(dataGoKrFoodClient.fetchFoodByName("치킨"))
+                .thenReturn(Optional.of(externalDto));
+
+        mockMvc.perform(get("/api/foods/external").param("name", "치킨"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("치킨"))
+                .andExpect(jsonPath("$.category").value("양식"))
+                .andExpect(jsonPath("$.nutrition.calories").value(420));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("GET /api/foods/external: 외부 API 응답이 없으면 404 반환")
+    void getExternalFoodReturnsNotFoundWhenMissing() throws Exception {
+        when(dataGoKrFoodClient.fetchFoodByName("없는메뉴"))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/foods/external").param("name", "없는메뉴"))
+                .andExpect(status().isNotFound());
     }
 
     private FoodAndNutritionDto sampleFoodDto(String name, String category, int calories) {
