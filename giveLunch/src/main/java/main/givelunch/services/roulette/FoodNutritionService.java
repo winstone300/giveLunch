@@ -1,5 +1,6 @@
 package main.givelunch.services.roulette;
 
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
@@ -17,7 +18,7 @@ public class FoodNutritionService {
     private final NutritionRepository nutritionRepository;
 
     @Transactional(readOnly = true)
-    public FoodAndNutritionDto getFoodNutrition(Long foodId) {
+    public Optional<FoodAndNutritionDto> getFoodNutrition(Long foodId) {
         Food food = foodRepository.findById(foodId)
                 .orElseThrow(() -> new IllegalArgumentException("FOOD_NOT_FOUND: " + foodId));
 
@@ -31,14 +32,14 @@ public class FoodNutritionService {
                 nutrition.getCarbohydrate()
         );
 
-        return FoodAndNutritionDto.of(
+        return Optional.of(FoodAndNutritionDto.of(
                 food.getId(),
                 food.getName(),
                 food.getCategory(),
                 food.getImgUrl(),
                 food.getServingSizeG(),
                 nutritionDto,
-                "INTERNAL_DB"
+                "INTERNAL_DB")
         );
     }
 }
