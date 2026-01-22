@@ -5,10 +5,8 @@ import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
 import main.givelunch.entities.Food;
-import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
-import main.givelunch.validators.FoodAndNutritionDtoValidator;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,7 +18,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminService {
     private final FoodRepository foodRepository;
     private final NutritionRepository nutritionRepository;
-    private final FoodAndNutritionDtoValidator foodAndNutritionDtoValidator;
 
     public List<FoodDto> loadFoods(){
         return foodRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
@@ -34,39 +31,15 @@ public class AdminService {
     }
 
     public Food saveFoodAndNutrition(FoodAndNutritionDto foodAndNutritionDto){
-        foodAndNutritionDtoValidator.hasName(foodAndNutritionDto);
         Food food = Food.from(foodAndNutritionDto);
         foodRepository.save(food);
         return food;
     }
 
     @Transactional
-    public Food updateFood(Long id,FoodAndNutritionDto foodAndNutritionDto){
+    public void updateFoodAndNutrition(Long id,FoodAndNutritionDto foodAndNutritionDto){
         Food food = foodRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "음식을 찾을 수 없습니다."));
         food.updateFood(foodAndNutritionDto);
-        return foodRepository.save(food);
-    }
-
-    @Transactional
-    public void updateNutrition(Long id,Food food,FoodAndNutritionDto foodAndNutritionDto){
-        boolean hasNutrition = foodAndNutritionDtoValidator.hasNutrition(foodAndNutritionDto);  //update할 nutrition
-        Nutrition nutrition = nutritionRepository.findByFoodId(id).orElse(null);    // 기존 nutrition
-        if(hasNutrition){
-            //기존에 정보가 있으면 update 아니면 새로 생성
-            if(nutrition==null){
-                nutrition = Nutrition.from(food,foodAndNutritionDto);
-            }else{
-                nutrition.updateNutrition(foodAndNutritionDto);
-            }
-            food.setNutrition(nutrition);
-            nutritionRepository.save(nutrition);
-        }
-    }
-
-    @Transactional
-    public void updateFoodAndNutrition(Long id,FoodAndNutritionDto foodAndNutritionDto){
-        Food food = updateFood(id,foodAndNutritionDto);
-        updateNutrition(id,food,foodAndNutritionDto);
     }
 }
