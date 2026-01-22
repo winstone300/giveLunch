@@ -42,14 +42,16 @@ public class FoodSearchService {
     }
 
     public List<FoodAndNutritionDto> searchExternalFoods(String name, UserDetails user) {
-        // admin인지 아닌지
-        boolean isAdmin = user.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        int fetchCount = isAdmin(user) ? properties.numOfRowsAdmin() : properties.numOfRowsUser();
 
-        // 역할에 따라 검색 결과 수 조정
-        int fetchCount = isAdmin ? properties.numOfRowsAdmin() : properties.numOfRowsUser();
-
-        // API 호출
         return dataGoKrFoodClient.fetchFoodsByName(name, fetchCount);
+    }
+
+    private boolean isAdmin(UserDetails user) {
+        if (user == null) {
+            return false;
+        }
+        return user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 }
