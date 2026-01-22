@@ -17,6 +17,12 @@ public record DataGoKrProperties(
         // 응답 포맷 타입(json 등)
         String type,
 
-        // 한 번에 조회할 레코드 수
-        int pageSize
+        // 조회할 페이지 수
+        int pageSize,
+
+        // 조회할 data 수(관리자용)
+        int numOfRowsAdmin,
+
+        // 조회할 data 수(사용자용)
+        int numOfRowsUser
 ) {}

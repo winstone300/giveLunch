@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
@@ -40,7 +41,9 @@ class DataGoKrFoodClientTest {
             "service-key",
             "/foods",
             "json",
-            10
+            1,
+            10,
+            1
     );
 
     @BeforeEach
@@ -49,7 +52,7 @@ class DataGoKrFoodClientTest {
     }
 
     @Test
-    @DisplayName("fetchFoodByName: 응답이 정상일 때 첫 번째 항목을 DTO로 변환한다")
+    @DisplayName("fetchFoodByName: 응답이 정상일 때 항목을 DTO로 변환한다")
     void fetchFoodByNameReturnsDto() {
         // given
         String body = """
@@ -74,11 +77,11 @@ class DataGoKrFoodClientTest {
                 .thenReturn(ResponseEntity.ok(body));
 
         // when
-        Optional<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodByName("비빔밥");
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("비빔밥");
 
         // then
-        assertThat(result).isPresent();
-        FoodAndNutritionDto dto = result.get();
+        assertThat(result).hasSize(1);
+        FoodAndNutritionDto dto = result.get(0);
         NutritionDto nutrition = dto.getNutrition();
         assertThat(dto.getName()).isEqualTo("비빔밥");
         assertThat(dto.getCategory()).isEqualTo("한식");
@@ -95,8 +98,8 @@ class DataGoKrFoodClientTest {
                 .queryParam("serviceKey", properties.serviceKey())
                 .queryParam("type", properties.type())
                 .queryParam("FOOD_NM_KR", "비빔밥")
-                .queryParam("pageNo", 1)
-                .queryParam("numOfRows", properties.pageSize())
+                .queryParam("pageNo", properties.pageSize())
+                .queryParam("numOfRows", properties.numOfRowsAdmin())
                 .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
@@ -104,8 +107,8 @@ class DataGoKrFoodClientTest {
     }
 
     @Test
-    @DisplayName("fetchFoodByName: items가 비어 있으면 Optional.empty 반환")
-    void fetchFoodByNameReturnsEmptyWhenItemsEmpty() {
+    @DisplayName("fetchFoodsByName: items가 비어 있으면 빈 리스트 반환")
+    void fetchFoodsByNameReturnsEmptyWhenItemsEmpty() {
         // given
         String body = """
                 {
@@ -119,7 +122,7 @@ class DataGoKrFoodClientTest {
                 .thenReturn(ResponseEntity.ok(body));
 
         //when
-        Optional<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodByName("없는메뉴");
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("없는메뉴");
 
         assertThat(result).isEmpty();
     }

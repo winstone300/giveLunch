@@ -77,7 +77,6 @@ public class Food {
         updateNutritionIfPresent(dto.getNutrition());
     }
 
-    // [분리된 메서드 1]: 영양 정보 처리 로직만 담당
     private void updateNutritionIfPresent(NutritionDto nutritionDto) {
         if (nutritionDto == null) {
             return; // 비어있으면 nutrition 생성 x

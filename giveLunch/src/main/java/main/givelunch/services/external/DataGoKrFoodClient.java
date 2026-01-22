@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,22 +47,28 @@ public class DataGoKrFoodClient {
     // 응답 response source
     private static final String SOURCE_DATA_GO_KR = "outer_db";
 
-    public Optional<FoodAndNutritionDto> fetchFoodByName(String name) {
-        URI uri = buildUri(name);
+    // 기본값으로 넘김
+    public List<FoodAndNutritionDto> fetchFoodsByName(String name) {
+        return fetchFoodsByName(name, properties.numOfRowsAdmin());
+    }
+
+    public List<FoodAndNutritionDto> fetchFoodsByName(String name,int numOfRows) {
+        URI uri = buildUri(name,numOfRows);
         return fetchBody(uri, name)
-                .flatMap(body -> extractFirstItem(body, name))
-                .flatMap(this::mapToDto);
+                .map(body -> extractItems(body, name))
+                .map(this::mapToDtos)
+                .orElseGet(List::of);
     }
 
     // 요청 uri 빌드
-    private URI buildUri(String name) {
+    private URI buildUri(String name, int numOfRows) {
         return UriComponentsBuilder.fromUriString(properties.baseUrl())
                 .path(properties.getAPI())
                 .queryParam(PARAM_SERVICE_KEY, properties.serviceKey())
                 .queryParam(PARAM_TYPE, properties.type() == null ? DEFAULT_TYPE : properties.type())
                 .queryParam(PARAM_FOOD_NAME, name)
-                .queryParam(PARAM_PAGE_NO, 1)
-                .queryParam(PARAM_NUM_OF_ROWS, properties.pageSize())
+                .queryParam(PARAM_PAGE_NO, properties.pageSize())
+                .queryParam(PARAM_NUM_OF_ROWS, numOfRows)
                 .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUri();
@@ -84,18 +92,20 @@ public class DataGoKrFoodClient {
     }
 
     // 응답 body에서 첫번째 item 반환
-    private Optional<JsonNode> extractFirstItem(String body, String name) {
+    private List<JsonNode> extractItems(String body, String name) {
         try {
             JsonNode root = objectMapper.readTree(body);
             JsonNode itemsNode = root.path(JSON_BODY).path(JSON_ITEMS);
 
             if (!itemsNode.isArray() || itemsNode.isEmpty()) {
-                return Optional.empty();
+                return List.of();
             }
-            return Optional.of(itemsNode.get(0));
+            List<JsonNode> items = new ArrayList<>();
+            itemsNode.forEach(items::add);
+            return items;
         } catch (Exception e) {
             log.warn(FAIL_PARSING_LOG, name, e);
-            return Optional.empty();
+            return List.of();
         }
     }
 
@@ -129,6 +139,14 @@ public class DataGoKrFoodClient {
                 nutritionDto,
                 SOURCE_DATA_GO_KR
         ));
+    }
+
+    private List<FoodAndNutritionDto> mapToDtos(List<JsonNode> items) {
+        List<FoodAndNutritionDto> results = new ArrayList<>();
+        for (JsonNode item : items) {
+            mapToDto(item).ifPresent(results::add);
+        }
+        return results;
     }
 
     // 키 값중 첫번째 값 반환

@@ -1,11 +1,14 @@
 package main.givelunch.controllers;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,12 +27,7 @@ public class FoodController {
     @GetMapping("/{foodId}/nutrition")
     public ResponseEntity<FoodAndNutritionDto> getFoodNutrition(@PathVariable Long foodId) {
         FoodAndNutritionDto dto = foodNutritionService.getFoodNutrition(foodId).orElse(null);
-
-        if (dto != null) {
-            return ResponseEntity.ok(dto); // 데이터가 있으면 JSON 반환
-        } else {
-            return ResponseEntity.notFound().build(); // 없으면 404 반환
-        }
+        return dto == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(dto);
     }
 
     @GetMapping("/getId")
@@ -39,13 +37,9 @@ public class FoodController {
     }
 
     @GetMapping("/external")
-    public ResponseEntity<FoodAndNutritionDto> getExternalFood(@RequestParam("name") String name) {
-        FoodAndNutritionDto dto = dataGoKrFoodClient.fetchFoodByName(name).orElse(null);
-
-        if (dto != null) {
-            return ResponseEntity.ok(dto); // 데이터가 있으면 JSON 반환
-        } else {
-            return ResponseEntity.notFound().build(); // 없으면 404 반환
-        }
+    public ResponseEntity<List<FoodAndNutritionDto>> getExternalFood(@RequestParam("name") String name,
+                                                                     @AuthenticationPrincipal UserDetails userDetails) {
+        List<FoodAndNutritionDto> results = foodSearchService.searchExternalFoods(name,userDetails);
+        return results.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(results);
     }
 }
