@@ -38,10 +38,8 @@ public class Nutrition {
     @Column(precision = 8, scale = 2)
     private BigDecimal fat;
 
-    public static Nutrition from(Food food,FoodAndNutritionDto foodAndNutritionDto){
-        NutritionDto nutritionDto = foodAndNutritionDto.getNutrition();
+    public static Nutrition from(NutritionDto nutritionDto){
         Nutrition nutrition = new Nutrition();
-        nutrition.setFood(food);
         nutrition.calories = nutritionDto.getCalories();
         nutrition.carbohydrate = nutritionDto.getCarbohydrate();
         nutrition.protein = nutritionDto.getProtein();
@@ -53,8 +51,7 @@ public class Nutrition {
         this.food = food;
     }
 
-    public void updateNutrition(FoodAndNutritionDto foodAndNutritionDto){
-        NutritionDto nutritionDto = foodAndNutritionDto.getNutrition();
+    public void updateNutrition(NutritionDto nutritionDto){
         this.calories = nutritionDto.getCalories();
         this.carbohydrate = nutritionDto.getCarbohydrate();
         this.protein = nutritionDto.getProtein();

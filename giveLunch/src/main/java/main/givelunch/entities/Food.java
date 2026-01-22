@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
+import main.givelunch.dto.NutritionDto;
 
 @Entity
 @Table(name="foods")
@@ -59,16 +60,41 @@ public class Food {
         food.imgUrl = foodAndNutritionDto.getImgUrl();
         food.servingSizeG = foodAndNutritionDto.getServingSizeG();
         if(foodAndNutritionDto.getNutrition() != null){
-            Nutrition nutrition = Nutrition.from(food,foodAndNutritionDto);
+            Nutrition nutrition = Nutrition.from(foodAndNutritionDto.getNutrition());
             food.setNutrition(nutrition);
         }
         return food;
     }
 
-    public void updateFood(FoodAndNutritionDto foodAndNutritionDto){
-        this.name = foodAndNutritionDto.getName();
-        this.category = foodAndNutritionDto.getCategory();
-        this.imgUrl = foodAndNutritionDto.getImgUrl();
-        this.servingSizeG = foodAndNutritionDto.getServingSizeG();
+    public void updateFood(FoodAndNutritionDto dto) {
+        validateFoodData(dto);
+
+        this.name = dto.getName();
+        this.category = dto.getCategory();
+        this.imgUrl = dto.getImgUrl();
+        this.servingSizeG = dto.getServingSizeG();
+
+        updateNutritionIfPresent(dto.getNutrition());
+    }
+
+    // [분리된 메서드 1]: 영양 정보 처리 로직만 담당
+    private void updateNutritionIfPresent(NutritionDto nutritionDto) {
+        if (nutritionDto == null) {
+            return; // 비어있으면 nutrition 생성 x
+        }
+
+        if (this.nutrition == null) {
+            // 기존 nutrition 없으면 새로 생성
+            this.setNutrition(Nutrition.from(nutritionDto));
+        } else {
+            // 기존에 nutrition 있으면 업데이트
+            this.nutrition.updateNutrition(nutritionDto);
+        }
+    }
+
+    private void validateFoodData(FoodAndNutritionDto dto) {
+        if (dto.getName() == null || dto.getName().isBlank()) {
+            throw new IllegalArgumentException("음식 이름은 필수입니다.");
+        }
     }
 }

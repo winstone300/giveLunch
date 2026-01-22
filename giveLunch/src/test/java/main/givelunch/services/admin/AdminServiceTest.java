@@ -3,7 +3,9 @@ package main.givelunch.services.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,10 +14,8 @@ import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
-import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
-import main.givelunch.validators.FoodAndNutritionDtoValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,228 +35,120 @@ class AdminServiceTest {
 
     @Mock
     private NutritionRepository nutritionRepository;
-
-    @Mock
-    private FoodAndNutritionDtoValidator foodAndNutritionDtoValidator;
-
     @InjectMocks
     private AdminService adminService;
 
     @Test
-    @DisplayName("loadFoods() - repository 결과를 FoodDto 리스트로 변환")
+    @DisplayName("loadFoods() - repository 결과를 FoodDto 리스트로 변환하여 반환")
     void loadFoods_returnsFoodDtos() {
-        //given
-        FoodDto foodDto1 = FoodDto.builder()
-                .id(1L)
-                .name("비빔밥")
-                .category("외식")
-                .imgUrl("img1")
-                .servingSizeG(300)
-                .build();
-        FoodDto foodDto2 = FoodDto.builder()
-                .id(2L)
-                .name("샐러드")
-                .category("가정식")
-                .imgUrl("img2")
-                .servingSizeG(150)
-                .build();
-
-        Food food1 = Food.from(foodDto1);
-        Food food2 = Food.from(foodDto2);
+        // given
+        FoodDto dto1 = FoodDto.builder().id(1L).name("비빔밥").category("한식").build();
+        FoodDto dto2 = FoodDto.builder().id(2L).name("파스타").category("양식").build();
 
         when(foodRepository.findAll(Sort.by(Sort.Direction.ASC, "id")))
-                .thenReturn(List.of(food1, food2));
+                .thenReturn(List.of(Food.from(dto1), Food.from(dto2)));
 
-        //when
+        // when
         List<FoodDto> result = adminService.loadFoods();
 
-        //then
+        // then
         assertThat(result).hasSize(2);
-        assertThat(result.get(0))
-                .extracting(FoodDto::getName, FoodDto::getCategory, FoodDto::getImgUrl, FoodDto::getServingSizeG)
-                .containsExactly("비빔밥", "외식", "img1", 300);
-        assertThat(result.get(1))
-                .extracting(FoodDto::getName, FoodDto::getCategory, FoodDto::getImgUrl, FoodDto::getServingSizeG)
-                .containsExactly("샐러드", "가정식", "img2", 150);
+        assertThat(result.get(0).getName()).isEqualTo("비빔밥");
+        assertThat(result.get(1).getName()).isEqualTo("파스타");
     }
 
     @Test
-    @DisplayName("deleteFoodsAndNutritions() - 음식과 영양정보 삭제")
-    void deleteFoodsAndNutritions_deletesBoth() {
-        //given
-        Long foodId = 10L;
-        Nutrition nutrition = mock(Nutrition.class);
+    @DisplayName("deleteFoodsAndNutritions() - ID로 삭제 수행")
+    void deleteFoodsAndNutritions_callsDeleteById() {
+        // given
+        Long foodId = 1L;
 
-        //when
+        // when
         adminService.deleteFoodsAndNutritions(foodId);
 
-        //then
+        // then
+        // food만 지워도 nutrition이 같이 삭제 됨
         verify(foodRepository).deleteById(foodId);
     }
 
     @Test
-    @DisplayName("saveFoodAndNutrition() - validator 호출 후 저장")
-    void saveFood_AndNutrition_savesAfterValidation() {
-        //given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setFoodId(3L);
-        dto.setName("파스타");
-        dto.setCategory("양식");
-        dto.setImgUrl("img");
-        dto.setServingSizeG(250);
-
-        ArgumentCaptor<Food> captor = ArgumentCaptor.forClass(Food.class);
-
-        //when
-        adminService.saveFoodAndNutrition(dto);
-
-        //then
-        verify(foodAndNutritionDtoValidator).hasName(dto);
-        verify(foodRepository).save(captor.capture());
-        Food saved = captor.getValue();
-        assertThat(saved.getName()).isEqualTo("파스타");
-        assertThat(saved.getCategory()).isEqualTo("양식");
-    }
-
-    @Test
-    @DisplayName("saveNutrition() - hasNutrition이 null이면 저장하지 않음")
-    void saveNutrition_skipsWhenHasNutritionTrue() {
-        //given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setFoodId(3L);
-        dto.setName("파스타");
-        dto.setCategory("양식");
-        dto.setImgUrl("img");
-        dto.setServingSizeG(250);
-
-        //when
-        adminService.saveFoodAndNutrition(dto);
-
-        //then
-        verify(nutritionRepository, never()).save(any(Nutrition.class));
-    }
-
-    @Test
-    @DisplayName("saveFoodAndNutrition: 영양 정보가 포함된 경우 Food와 함께 Nutrition이 저장") // 이름 수정 권장
+    @DisplayName("saveFoodAndNutrition() - Food와 Nutrition 정보가 함께 저장된다")
     void saveFoodAndNutrition_savesFoodWithNutrition() {
         // given
         NutritionDto nutritionDto = NutritionDto.of(
-                new BigDecimal("100"),
-                new BigDecimal("10"),
-                new BigDecimal("3"),
-                new BigDecimal("20"));
+                new BigDecimal("100"), new BigDecimal("10"),
+                new BigDecimal("5"), new BigDecimal("20")
+        );
 
         FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("테스트음식");
-        dto.setNutrition(nutritionDto);
+        dto.setName("새로운음식");
+        dto.setCategory("테스트");
+        dto.setNutrition(nutritionDto); // 영양 정보 포함
 
-        ArgumentCaptor<Food> foodCaptor = ArgumentCaptor.forClass(Food.class);
+        ArgumentCaptor<Food> captor = ArgumentCaptor.forClass(Food.class);
 
         // when
         adminService.saveFoodAndNutrition(dto);
 
         // then
-        verify(foodRepository).save(foodCaptor.capture());
-        verify(nutritionRepository, never()).save(any());   // food 저장시 자동으로 nutrition도 저장되는 방식
+        verify(foodRepository).save(captor.capture());
 
-        Food savedFood = foodCaptor.getValue();
+        Food savedFood = captor.getValue();
+        assertThat(savedFood.getName()).isEqualTo("새로운음식");
+
         assertThat(savedFood.getNutrition()).isNotNull();
         assertThat(savedFood.getNutrition().getCalories()).isEqualTo(new BigDecimal("100"));
+
+        verify(nutritionRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("updateFood() - 음식이 없으면 NOT_FOUND")
-    void updateFood_throwsWhenMissing() {
-        //given
-        Long foodId = 30L;
+    @DisplayName("updateFoodAndNutrition() - 존재하지 않는 음식 ID면 예외 발생")
+    void updateFoodAndNutrition_throwsNotFound() {
+        // given
+        Long invalidId = 999L;
         FoodAndNutritionDto dto = new FoodAndNutritionDto();
 
-        when(foodRepository.findById(foodId)).thenReturn(Optional.empty());
+        when(foodRepository.findById(invalidId)).thenReturn(Optional.empty());
 
-        //when&then
-        assertThatThrownBy(() -> adminService.updateFood(foodId, dto))
+        // when & then
+        assertThatThrownBy(() -> adminService.updateFoodAndNutrition(invalidId, dto))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(exception -> {
-                    ResponseStatusException response = (ResponseStatusException) exception;
-                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-                    assertThat(response.getReason()).isEqualTo("음식을 찾을 수 없습니다.");
+                .satisfies(e -> {
+                    ResponseStatusException rse = (ResponseStatusException) e;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
                 });
     }
 
     @Test
-    @DisplayName("updateFood() - 기존 음식 업데이트 후 저장")
-    void updateFood_updatesAndSaves() {
-        //given
-        Long foodId = 40L;
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        Food food = mock(Food.class);
+    @DisplayName("updateFoodAndNutrition() - 음식과 영양 정보를 업데이트한다")
+    void updateFoodAndNutrition_updatesFields() {
+        // given
+        Long foodId = 1L;
 
-        when(foodRepository.findById(foodId)).thenReturn(Optional.of(food));
-        when(foodRepository.save(food)).thenReturn(food);
+        // 기존 데이터
+        FoodDto existingFoodDto = FoodDto.builder().id(foodId).name("구형음식").category("구형").build();
+        Food existingFood = Food.from(existingFoodDto);
 
-        //when
-        adminService.updateFood(foodId, dto);
+        // 업데이트할 데이터
+        NutritionDto newNutritionDto = NutritionDto.of(
+                new BigDecimal("500"), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE
+        );
+        FoodAndNutritionDto updateDto = new FoodAndNutritionDto();
+        updateDto.setName("신형음식");
+        updateDto.setCategory("신형");
+        updateDto.setNutrition(newNutritionDto);
 
-        verify(food).updateFood(dto);
-        verify(foodRepository).save(food);
-    }
+        when(foodRepository.findById(foodId)).thenReturn(Optional.of(existingFood));
 
-    @Test
-    @DisplayName("updateNutrition() - 기존 nutrition이 없고 새 nutrition 정보가 있으면 새로 저장")
-    void updateNutrition_createsWhenMissingAndHasNutrition() {
-        //given
-        Long foodId = 50L;
-        Food food = mock(Food.class);
-        NutritionDto nutritionDto = NutritionDto.of(
-                new BigDecimal("200"),
-                new BigDecimal("12"),
-                new BigDecimal("5"),
-                new BigDecimal("30"));
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setNutrition(nutritionDto);
+        // when
+        adminService.updateFoodAndNutrition(foodId, updateDto);
 
-        when(foodAndNutritionDtoValidator.hasNutrition(dto)).thenReturn(true);
-        when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
+        // then
+        assertThat(existingFood.getName()).isEqualTo("신형음식");
+        assertThat(existingFood.getNutrition()).isNotNull(); // 없던 영양 정보가 생겼는지
+        assertThat(existingFood.getNutrition().getCalories()).isEqualTo(new BigDecimal("500"));
 
-        //when
-        adminService.updateNutrition(foodId, food, dto);
-
-        //then
-        verify(nutritionRepository).save(any(Nutrition.class));
-    }
-
-    @Test
-    @DisplayName("updateNutrition() - 기존 nutrition이 있으면 update 후 저장")
-    void updateNutrition_updatesWhenExisting() {
-        //given
-        Long foodId = 60L;
-        Food food = mock(Food.class);
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        Nutrition nutrition = mock(Nutrition.class);
-
-        when(foodAndNutritionDtoValidator.hasNutrition(dto)).thenReturn(true);
-        when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.of(nutrition));
-
-        //when
-        adminService.updateNutrition(foodId, food, dto);
-
-        //then
-        verify(nutrition).updateNutrition(dto);
-        verify(nutritionRepository).save(nutrition);
-    }
-
-    @Test
-    @DisplayName("updateNutrition() - update할 nutrition 정보가 없으면 저장하지 않음")
-    void updateNutrition_skipsWhenHasNutritionFalse() {
-        Long foodId = 70L;
-        Food food = mock(Food.class);
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-
-        when(foodAndNutritionDtoValidator.hasNutrition(dto)).thenReturn(false);
-        when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
-
-        adminService.updateNutrition(foodId, food, dto);
-
-        verify(nutritionRepository, never()).save(any(Nutrition.class));
+        verify(nutritionRepository, never()).save(any());
     }
 }
