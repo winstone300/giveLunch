@@ -36,7 +36,7 @@ public class AdminFoodController {
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
     public void createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
-        Food food = adminService.saveFoodAndNutrition(request);
+        adminService.saveFoodAndNutrition(request);
     }
 
     @DeleteMapping("/{id}")

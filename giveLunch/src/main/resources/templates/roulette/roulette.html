@@ -305,7 +305,7 @@
 
                 const externalData = await externalResp.json();
 
-                renderNutrition(externalData);
+                renderNutrition(externalData[0]);
                 return;
             }
             const resp = await fetch(`/api/foods/${foodId}/nutrition`);
