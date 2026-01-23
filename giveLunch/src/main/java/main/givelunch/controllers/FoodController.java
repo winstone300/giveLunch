@@ -25,21 +25,19 @@ public class FoodController {
 
     // get요청은 굳이 ResponseEntity로 안감싸도 될거같음
     @GetMapping("/{foodId}/nutrition")
-    public ResponseEntity<FoodAndNutritionDto> getFoodNutrition(@PathVariable Long foodId) {
-        FoodAndNutritionDto dto = foodNutritionService.getFoodNutrition(foodId).orElse(null);
-        return dto == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(dto);
+    public FoodAndNutritionDto getFoodNutrition(@PathVariable Long foodId) {
+        return foodNutritionService.getFoodNutrition(foodId);
     }
 
     @GetMapping("/getId")
-    public ResponseEntity<Long> getId(@RequestParam("name") String name) {
-        Long id = foodSearchService.getIdByName(name);
-        return ResponseEntity.ok(id);
+    public Long getId(@RequestParam("name") String name) {
+       return foodSearchService.getIdByName(name);
     }
 
     @GetMapping("/external")
-    public ResponseEntity<List<FoodAndNutritionDto>> getExternalFood(@RequestParam("name") String name,
+    public List<FoodAndNutritionDto> getExternalFood(@RequestParam("name") String name,
                                                                      @AuthenticationPrincipal UserDetails userDetails) {
         List<FoodAndNutritionDto> results = foodSearchService.searchExternalFoods(name,userDetails);
-        return results.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(results);
+        return results.isEmpty() ? List.of() : results;
     }
 }

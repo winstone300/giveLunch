@@ -10,6 +10,7 @@ import java.util.Optional;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
+import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -40,8 +41,8 @@ class FoodNutritionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> foodNutritionService.getFoodNutrition(foodId))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("FOOD_NOT_FOUND: " + foodId);
+                .isInstanceOf(FoodNotFoundException.class)
+                .hasMessage("해당 음식을 찾을 수 없습니다. ID: " + foodId);
     }
 
     @Test
@@ -55,7 +56,7 @@ class FoodNutritionServiceTest {
         when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.empty());
 
         // when
-        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId).orElse(null);
+        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
 
         // then
         assertThat(result.getNutrition()).isNull();
@@ -85,7 +86,7 @@ class FoodNutritionServiceTest {
         when(nutritionRepository.findByFoodId(foodId)).thenReturn(Optional.of(nutrition));
 
         // when
-        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId).orElse(null);
+        FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
 
         // then
         assertThat(result.getFoodId()).isEqualTo(foodId);

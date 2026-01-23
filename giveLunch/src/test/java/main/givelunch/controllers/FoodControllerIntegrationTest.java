@@ -98,13 +98,14 @@ class FoodControllerIntegrationTest {
 
     @Test
     @WithMockUser
-    @DisplayName("GET /api/foods/external: 외부 API 응답이 없으면 404 반환")
+    @DisplayName("GET /api/foods/external: 외부 API 응답이 없으면 빈 List 반환")
     void getExternalFoodsReturnsNotFoundWhenMissing() throws Exception {
         when(dataGoKrFoodClient.fetchFoodsByName(eq("없는메뉴"), anyInt()))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/foods/external").param("name", "없는메뉴"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
     }
 
     private FoodAndNutritionDto sampleFoodDto(String name, String category, int calories) {

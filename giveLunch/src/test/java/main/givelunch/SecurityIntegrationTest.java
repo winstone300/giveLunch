@@ -27,8 +27,6 @@ class SecurityIntegrationTest {
     @Test
     @DisplayName("GET /login: 익명 사용자는 로그인 페이지에 접근 가능")
     void loginPageAccessibleForAnonymous() throws Exception {
-        // given
-
         // when & then
         mockMvc.perform(get("/login"))
                 .andExpect(status().isOk())
@@ -42,8 +40,8 @@ class SecurityIntegrationTest {
 
         // when & then
         mockMvc.perform(get("/roulette"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("**/login"));
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"));
     }
 
     @Test
