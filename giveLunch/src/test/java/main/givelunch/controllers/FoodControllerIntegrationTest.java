@@ -1,5 +1,7 @@
 package main.givelunch.controllers;
 
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -78,13 +80,13 @@ class FoodControllerIntegrationTest {
                 .andExpect(content().string(String.valueOf(food.getId())));
     }
 
-/*    @Test
-    @WithMockUser(roles = "ADMIN")
+    @Test
+    @WithMockUser
     @DisplayName("GET /api/foods/external: 외부 API에서 음식 정보를 조회")
     void getExternalFoodsReturnsFoodAndNutrition() throws Exception {
         FoodAndNutritionDto externalDto = sampleFoodDto("치킨", "양식", 420);
 
-        when(dataGoKrFoodClient.fetchFoodsByName("치킨"))
+        when(dataGoKrFoodClient.fetchFoodsByName(eq("치킨"), anyInt()))
                 .thenReturn(List.of(externalDto));
 
         mockMvc.perform(get("/api/foods/external").param("name", "치킨"))
@@ -92,13 +94,13 @@ class FoodControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("치킨"))
                 .andExpect(jsonPath("$[0].category").value("양식"))
                 .andExpect(jsonPath("$[0].nutrition.calories").value(420));
-    }*/
+    }
 
     @Test
     @WithMockUser
     @DisplayName("GET /api/foods/external: 외부 API 응답이 없으면 404 반환")
     void getExternalFoodsReturnsNotFoundWhenMissing() throws Exception {
-        when(dataGoKrFoodClient.fetchFoodsByName("없는메뉴"))
+        when(dataGoKrFoodClient.fetchFoodsByName(eq("없는메뉴"), anyInt()))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/foods/external").param("name", "없는메뉴"))
