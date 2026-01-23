@@ -6,8 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "app.security")
 public class SecurityProperties {
-    private List<String> permitAll = new ArrayList<>();
+    private final List<String> permitAll;
 
     public List<String> getPermitAll() { return permitAll; }
-    public void setPermitAll(List<String> permitAll) { this.permitAll = permitAll; }
+    public SecurityProperties(List<String> permitAll) {
+        this.permitAll = (permitAll != null) ? permitAll : new ArrayList<>();
+    }
 }
