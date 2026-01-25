@@ -6,6 +6,7 @@ import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
+import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,9 @@ public class FoodNutritionService {
     private final NutritionRepository nutritionRepository;
 
     @Transactional(readOnly = true)
-    public Optional<FoodAndNutritionDto> getFoodNutrition(Long foodId) {
+    public FoodAndNutritionDto getFoodNutrition(Long foodId) {
         Food food = foodRepository.findById(foodId)
-                .orElseThrow(() -> new IllegalArgumentException("FOOD_NOT_FOUND: " + foodId));
+                .orElseThrow(() -> new FoodNotFoundException(foodId));;
 
         // 영양정보가 안들어가 있으면 null
         Nutrition nutrition = nutritionRepository.findByFoodId(foodId).orElse(null);
@@ -32,7 +33,7 @@ public class FoodNutritionService {
                 nutrition.getCarbohydrate()
         );
 
-        return Optional.of(FoodAndNutritionDto.of(
+        return FoodAndNutritionDto.of(
                 food.getId(),
                 food.getName(),
                 food.getCategory(),
@@ -40,6 +41,6 @@ public class FoodNutritionService {
                 food.getServingSizeG(),
                 nutritionDto,
                 "INTERNAL_DB")
-        );
+        ;
     }
 }

@@ -31,6 +31,9 @@ class DataGoKrFoodClientTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private NaverImageClient naverImageClient;
+
     // final 제거 (setUp에서 초기화해야 하므로)
     private DataGoKrFoodClient dataGoKrFoodClient;
 
@@ -48,7 +51,7 @@ class DataGoKrFoodClientTest {
 
     @BeforeEach
     void setUp() {
-        this.dataGoKrFoodClient = new DataGoKrFoodClient(properties, objectMapper, restTemplate);
+        this.dataGoKrFoodClient = new DataGoKrFoodClient(properties, objectMapper, restTemplate,naverImageClient);
     }
 
     @Test
@@ -75,6 +78,8 @@ class DataGoKrFoodClientTest {
 
         when(restTemplate.getForEntity(any(URI.class), any()))
                 .thenReturn(ResponseEntity.ok(body));
+        when(naverImageClient.fetchFirstImageUrl("비빔밥"))
+                .thenReturn(Optional.of("https://img.example.com/bibimbap.jpg"));
 
         // when
         List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("비빔밥");
@@ -85,6 +90,7 @@ class DataGoKrFoodClientTest {
         NutritionDto nutrition = dto.getNutrition();
         assertThat(dto.getName()).isEqualTo("비빔밥");
         assertThat(dto.getCategory()).isEqualTo("한식");
+        assertThat(dto.getImgUrl()).isEqualTo("https://img.example.com/bibimbap.jpg");
         assertThat(dto.getServingSizeG()).isEqualTo(200);
         assertThat(nutrition.getCalories()).isEqualByComparingTo(BigDecimal.valueOf(550));
         assertThat(nutrition.getProtein()).isEqualByComparingTo(BigDecimal.valueOf(22));
@@ -227,6 +233,8 @@ class DataGoKrFoodClientTest {
 
         when(restTemplate.getForEntity(any(URI.class), any()))
                 .thenReturn(ResponseEntity.ok(body));
+        when(naverImageClient.fetchFirstImageUrl("치킨"))
+                .thenReturn(Optional.of("https://img.example.com/chicken.jpg"));
 
         // when
         List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("치킨");
@@ -237,6 +245,7 @@ class DataGoKrFoodClientTest {
         FoodAndNutritionDto dto = result.get(0);
         assertThat(dto.getName()).isEqualTo("치킨");
         assertThat(dto.getServingSizeG()).isEqualTo(200); // 200g -> 200
+        assertThat(dto.getImgUrl()).isEqualTo("https://img.example.com/chicken.jpg");
         // 1,500 kcal -> 1500
         assertThat(dto.getNutrition().getCalories()).isEqualByComparingTo(BigDecimal.valueOf(1500));
         assertThat(dto.getNutrition().getProtein()).isEqualByComparingTo(BigDecimal.valueOf(20));
