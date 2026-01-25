@@ -27,6 +27,7 @@ public class DataGoKrFoodClient {
     private final DataGoKrProperties properties;
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
+    private final NaverImageClient naverImageClient;
 
     // API요청 관련 문자
     private static final String PARAM_SERVICE_KEY = "serviceKey";
@@ -117,7 +118,7 @@ public class DataGoKrFoodClient {
         }
 
         String category = readFirstText(itemNode, DataGoKrAPIField.CATEGORY.key());
-        String imgUrl = readFirstText(itemNode, "img_url"); // 이미지 현재 제공안함(나중에 수정예정)
+        String imgUrl = naverImageClient.fetchFirstImageUrl(foodName).orElse(null);
         Integer servingSizeG = parseInteger(readFirstText(itemNode, DataGoKrAPIField.SERVINGSIZE.key()));
 
         BigDecimal calories = parseBigDecimal(readFirstText(itemNode, DataGoKrAPIField.CALORIES.key()));

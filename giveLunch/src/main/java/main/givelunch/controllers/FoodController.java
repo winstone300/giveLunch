@@ -3,6 +3,7 @@ package main.givelunch.controllers;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
@@ -21,9 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FoodController {
     private final FoodNutritionService foodNutritionService;
     private final FoodSearchService foodSearchService;
-    private final DataGoKrFoodClient dataGoKrFoodClient;
 
-    // get요청은 굳이 ResponseEntity로 안감싸도 될거같음
     @GetMapping("/{foodId}/nutrition")
     public FoodAndNutritionDto getFoodNutrition(@PathVariable Long foodId) {
         return foodNutritionService.getFoodNutrition(foodId);
@@ -38,6 +37,9 @@ public class FoodController {
     public List<FoodAndNutritionDto> getExternalFood(@RequestParam("name") String name,
                                                                      @AuthenticationPrincipal UserDetails userDetails) {
         List<FoodAndNutritionDto> results = foodSearchService.searchExternalFoods(name,userDetails);
-        return results.isEmpty() ? List.of() : results;
+        if (results.isEmpty()) {
+            throw new FoodNotFoundException(name);
+        }
+        return results;
     }
 }
