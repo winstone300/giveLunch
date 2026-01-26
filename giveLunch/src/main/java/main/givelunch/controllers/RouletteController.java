@@ -37,21 +37,15 @@ public class RouletteController {
 
     @PostMapping("/api/menus")
     @ResponseBody
-    public ResponseEntity<Void> addMenu(@RequestBody Map<String, String> data, Principal principal) {
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        menuService.saveMenu(principal.getName(), data.get("menuName"));
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> addMenu(@RequestBody MenuDto menuDto, Principal principal) {
+        menuService.saveMenu(principal.getName(), menuDto.getMenuName());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // 메뉴 삭제 API
     @DeleteMapping("/api/menus/delete")
     @ResponseBody
     public ResponseEntity<Void> deleteMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
         menuService.deleteMenu(principal.getName(), menuDto.getMenuName());
         return ResponseEntity.noContent().build();
     }

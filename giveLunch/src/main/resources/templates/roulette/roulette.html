@@ -169,6 +169,8 @@
                     body: JSON.stringify({ menuName: menuName })
                 });
                 if (response.ok) currentMenu.push(menuName);
+                else{ // 실패 처리(나중에)
+                }
             } catch (e) { alert("서버 저장 실패!"); return; }
         } else {
             // 게스트: LocalStorage에 저장
@@ -193,6 +195,8 @@
                     body: JSON.stringify({ menuName: menuName })
                 });
                 if (response.ok) currentMenu.splice(index, 1);
+                else{ // 실패 처리
+                }
             } catch (e) { alert("서버 삭제 실패!"); return; }
         } else {
             // 게스트: LocalStorage에서 삭제

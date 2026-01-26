@@ -7,6 +7,7 @@ import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.services.admin.AdminService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,18 +35,20 @@ public class AdminFoodController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
-    public void createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
+    public ResponseEntity<Void> createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
         adminService.saveFoodAndNutrition(request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/{id}")
-    public void deleteFood(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteFood(@PathVariable Long id) {
         adminService.deleteFoodsAndNutritions(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
-    public void updateFoodAndNutrition(@PathVariable Long id, @RequestBody FoodAndNutritionDto request) {
-        adminService.updateFoodAndNutrition(id,request);
+    public ResponseEntity<Void> updateFoodAndNutrition(@PathVariable Long id, @RequestBody FoodAndNutritionDto request) {
+        adminService.updateFoodAndNutrition(id, request);
+        return ResponseEntity.noContent().build();
     }
 }

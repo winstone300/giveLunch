@@ -12,31 +12,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MenuService {
     private final MenuRepository menuRepository;
     private final MenuProperties menuProperties;
 
-    // 메뉴 리스트 DTO로 반환
-    private List<MenuDto> loadMenu(String userName) {
-        List<Menu> entities = menuRepository.findByUserName(userName);
-        return entities.stream()
-                .map(MenuDto::new)
-                .collect(Collectors.toList());
-    }
-
     // 메뉴 리스트 String 반환(비어 있으면 기본 값으로 설정)
     public List<String> loadMenuToString(String userName) {
-        List<MenuDto> menuDtoList = loadMenu(userName);
+        List<Menu> menus = menuRepository.findByUserName(userName);
 
-        if (menuDtoList.isEmpty()) {
+        if (menus.isEmpty()) {
             return menuProperties.defaults();
         }
 
-        List<String> menuStringList = menuDtoList.stream()
-                .map(MenuDto::getMenuName)
+        return menus.stream()
+                .map(Menu::getMenuName)
                 .collect(Collectors.toList());
-
-        return menuStringList;
     }
 
     @Transactional

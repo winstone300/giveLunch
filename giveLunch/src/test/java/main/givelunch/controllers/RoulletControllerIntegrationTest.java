@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -58,7 +59,7 @@ class RouletteControllerIntegrationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"menuName\":\"비빔밥\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());
 
         List<Menu> menus = menuRepository.findByUserName("tester");
         assertThat(menus).hasSize(1);
@@ -67,17 +68,17 @@ class RouletteControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "tester")
-    @DisplayName("POST /api/menus/delete: 로그인 user가 메뉴를 삭제하면 제거")
+    @DisplayName("DELETE /api/menus/delete: 로그인 user가 메뉴를 삭제하면 제거")
     void deleteMenuRemovesForAuthenticatedUser() throws Exception {
         // given
         menuRepository.save(Menu.of("tester", "칼국수"));
 
         //when
-        mockMvc.perform(post("/api/menus/delete")
+        mockMvc.perform(delete("/api/menus/delete")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"menuName\":\"칼국수\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         // then
         List<Menu> menus = menuRepository.findByUserName("tester");
