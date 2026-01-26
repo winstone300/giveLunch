@@ -188,7 +188,7 @@
             // 회원: DB에서 삭제
             try {
                 const response = await fetch('/api/menus/delete', {
-                    method: 'POST',
+                    method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
                     body: JSON.stringify({ menuName: menuName })
                 });

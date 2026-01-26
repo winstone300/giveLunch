@@ -25,7 +25,6 @@ public class LoginController {
         return "login/signup";
     }
 
-    // 상태코드 추가 필요
     @PostMapping("/signup")
     public String signup(@ModelAttribute SignupRequestDto req, Model model) {
         try {

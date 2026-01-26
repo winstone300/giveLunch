@@ -8,6 +8,7 @@ import main.givelunch.dto.MenuDto;
 import main.givelunch.entities.Menu;
 import main.givelunch.repositories.MenuRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,11 +39,13 @@ public class MenuService {
         return menuStringList;
     }
 
+    @Transactional
     public void saveMenu(String userName, String menuName) {
         Menu menu = Menu.of(userName,menuName);
         menuRepository.save(menu);
     }
 
+    @Transactional
     public void deleteMenu(String userName, String menuName) {
         menuRepository.deleteByUserNameAndMenuName(userName,menuName);
     }
