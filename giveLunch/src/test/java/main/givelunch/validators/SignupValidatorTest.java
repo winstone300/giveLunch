@@ -2,9 +2,12 @@ package main.givelunch.validators;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import main.givelunch.dto.SignupRequestDto;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,8 +35,12 @@ class SignupValidatorTest {
         dto.setEmail("user@example.com");
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("아이디를 입력해주세요.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_USERNAME);
+                })
+                .hasMessage(ErrorCode.INVALID_USERNAME.getMessage());
     }
 
     @Test
@@ -46,8 +53,12 @@ class SignupValidatorTest {
         dto.setEmail("user@example.com");
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("비밀번호를 입력해주세요.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_PASSWORD);
+                })
+                .hasMessage(ErrorCode.INVALID_PASSWORD.getMessage());
     }
 
     @Test
@@ -60,8 +71,12 @@ class SignupValidatorTest {
         dto.setEmail("user@example.com");
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("비밀번호 확인이 일치하지 않습니다.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.PASSWORD_MISMATCH);
+                })
+                .hasMessage(ErrorCode.PASSWORD_MISMATCH.getMessage());
     }
 
     @Test
@@ -76,8 +91,12 @@ class SignupValidatorTest {
         when(userRepository.existsByUserName("user")).thenReturn(true);
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("이미 사용 중인 아이디입니다.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_USERNAME);
+                })
+                .hasMessage(ErrorCode.DUPLICATE_USERNAME.getMessage());
     }
 
     @Test
@@ -93,8 +112,12 @@ class SignupValidatorTest {
         when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("이미 사용 중인 이메일입니다.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_EMAIL);
+                })
+                .hasMessage(ErrorCode.DUPLICATE_EMAIL.getMessage());
     }
 
     @Test
