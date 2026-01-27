@@ -26,8 +26,8 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        String[] permitAdmin = securityProperties.getPermitAdmin().toArray(new String[0]);
-        String[] permitUser = securityProperties.getPermitAllUser().toArray(new String[0]);
+        String[] permitAdmin = securityProperties.permitAdmin().toArray(new String[0]);
+        String[] permitUser = securityProperties.permitAllUser().toArray(new String[0]);
 
         http
                 .authorizeHttpRequests(auth -> auth
