@@ -26,12 +26,13 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        String[] permit = securityProperties.getPermitAll().toArray(new String[0]);
+        String[] permitAdmin = securityProperties.getPermitAdmin().toArray(new String[0]);
+        String[] permitUser = securityProperties.getPermitAllUser().toArray(new String[0]);
 
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/admin/**").hasAuthority(Role.ADMIN.value())
-                        .requestMatchers(permit).permitAll()
+                        .requestMatchers(permitAdmin).hasAuthority(Role.ADMIN.value())
+                        .requestMatchers(permitUser).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
