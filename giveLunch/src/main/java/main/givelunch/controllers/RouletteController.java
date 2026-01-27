@@ -43,7 +43,7 @@ public class RouletteController {
     }
 
     // 메뉴 삭제 API
-    @DeleteMapping("/api/menus/delete")
+    @DeleteMapping("/api/menus")
     @ResponseBody
     public ResponseEntity<Void> deleteMenu(@RequestBody MenuDto menuDto, Principal principal) {
         menuService.deleteMenu(principal.getName(), menuDto.getMenuName());
