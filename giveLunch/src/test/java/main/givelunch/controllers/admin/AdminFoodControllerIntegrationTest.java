@@ -92,7 +92,7 @@ class AdminFoodControllerIntegrationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         // then
         Food updatedFood = foodRepository.findById(foodId).orElseThrow();
@@ -121,7 +121,7 @@ class AdminFoodControllerIntegrationTest {
         // when
         mockMvc.perform(delete("/api/admin/foods/{id}", foodId)
                         .with(csrf()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         // then
         entityManager.flush();

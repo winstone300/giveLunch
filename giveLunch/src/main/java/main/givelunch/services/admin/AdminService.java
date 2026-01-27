@@ -5,13 +5,12 @@ import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
 import main.givelunch.entities.Food;
+import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +38,7 @@ public class AdminService {
     @Transactional
     public void updateFoodAndNutrition(Long id,FoodAndNutritionDto foodAndNutritionDto){
         Food food = foodRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "음식을 찾을 수 없습니다."));
+                .orElseThrow(() -> new FoodNotFoundException(id));
         food.updateFood(foodAndNutritionDto);
     }
 }

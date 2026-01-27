@@ -13,11 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.properties.DataGoKrProperties;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -26,7 +25,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class DataGoKrFoodClient {
     private final DataGoKrProperties properties;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final NaverImageClient naverImageClient;
 
     // API요청 관련 문자
@@ -78,12 +77,15 @@ public class DataGoKrFoodClient {
     // HTTP 호출 -> 응답 body 반환
     private Optional<String> fetchBody(URI uri, String name) {
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            String body = restClient.get()
+                    .uri(uri)
+                    .retrieve()
+                    .body(String.class);
+            if (body == null || body.isBlank()) {
                 return Optional.empty();
             }
-            return Optional.of(response.getBody());
-        } catch (HttpStatusCodeException e) {      // 에로 코드 응답(4xx, 5xx)
+            return Optional.of(body);
+        } catch (RestClientResponseException e) {      // 에로 코드 응답(4xx, 5xx)
             log.warn(FAIL_REQUEST_LOG, e.getStatusCode(), name, e);
             return Optional.empty();
         } catch (RestClientException e) {       // 서버 통신 실패
@@ -98,12 +100,26 @@ public class DataGoKrFoodClient {
             JsonNode root = objectMapper.readTree(body);
             JsonNode itemsNode = root.path(JSON_BODY).path(JSON_ITEMS);
 
-            if (!itemsNode.isArray() || itemsNode.isEmpty()) {
+            // 데이터가 없거나 누락된 노드인 경우
+            if (itemsNode.isMissingNode() || itemsNode.isNull()) {
                 return List.of();
             }
-            List<JsonNode> items = new ArrayList<>();
-            itemsNode.forEach(items::add);
-            return items;
+
+            // 배열인 경우 (다건)
+            if (itemsNode.isArray()) {
+                List<JsonNode> items = new ArrayList<>();
+                itemsNode.forEach(items::add);
+                return items;
+            }
+
+            // 객체인 경우 (단건)
+            if (itemsNode.isObject()) {
+                return List.of(itemsNode);
+            }
+
+            // 그 외
+            return List.of();
+
         } catch (Exception e) {
             log.warn(FAIL_PARSING_LOG, name, e);
             return List.of();

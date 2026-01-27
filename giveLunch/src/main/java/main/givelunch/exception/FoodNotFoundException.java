@@ -1,11 +1,18 @@
 package main.givelunch.exception;
 
+import lombok.Getter;
+
+@Getter
 public class FoodNotFoundException extends RuntimeException {
+    private final ErrorCode errorCode;
+
     public FoodNotFoundException(Long foodId) {
-        super("해당 음식을 찾을 수 없습니다. ID: " + foodId);
+        super(ErrorCode.FOOD_NOT_FOUND.getMessage() + " ID: " + foodId);
+        this.errorCode = ErrorCode.FOOD_NOT_FOUND;
     }
 
     public FoodNotFoundException(String foodName) {
-        super(foodName + " 음식을 찾을 수 없습니다.");
+        super(foodName + " " + ErrorCode.FOOD_NOT_FOUND.getMessage());
+        this.errorCode = ErrorCode.FOOD_NOT_FOUND;
     }
 }

@@ -2,6 +2,8 @@ package main.givelunch.validators;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.SignupRequestDto;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.UserRepository;
 import org.springframework.stereotype.Component;
 
@@ -17,19 +19,19 @@ public class SignupValidator {
         String email = signupRequestDto.getEmail();
 
         if (userName == null || userName.isBlank()) {
-            throw new IllegalArgumentException("아이디를 입력해주세요.");
+            throw new ValidationException(ErrorCode.INVALID_USERNAME);
         }
         if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("비밀번호를 입력해주세요.");
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD);
         }
         if (!password.equals(passwordConfirm)) {
-            throw new IllegalArgumentException("비밀번호 확인이 일치하지 않습니다.");
+            throw new ValidationException(ErrorCode.PASSWORD_MISMATCH);
         }
         if (userRepository.existsByUserName(userName)) {
-            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+            throw new ValidationException(ErrorCode.DUPLICATE_USERNAME);
         }
         if(userRepository.existsByEmail(email)){
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new ValidationException(ErrorCode.DUPLICATE_EMAIL);
         }
     }
 }

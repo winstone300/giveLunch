@@ -12,6 +12,8 @@ import lombok.Getter;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
 import main.givelunch.dto.NutritionDto;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
 
 @Entity
 @Table(name="foods")
@@ -93,7 +95,7 @@ public class Food {
 
     private void validateFoodData(FoodAndNutritionDto dto) {
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new IllegalArgumentException("음식 이름은 필수입니다.");
+            throw new ValidationException(ErrorCode.INVALID_FOOD_NAME);
         }
     }
 }

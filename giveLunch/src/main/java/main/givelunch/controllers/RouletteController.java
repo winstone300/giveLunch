@@ -7,8 +7,11 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.MenuDto;
 import main.givelunch.services.roulette.MenuService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,23 +35,19 @@ public class RouletteController {
         return "roulette/roulette";
     }
 
-    @Transactional
     @PostMapping("/api/menus")
     @ResponseBody
-    public void addMenu(@RequestBody Map<String, String> data, Principal principal) {
-        if (principal != null) {
-            menuService.saveMenu(principal.getName(), data.get("menuName"));
-        }
+    public ResponseEntity<Void> addMenu(@RequestBody MenuDto menuDto, Principal principal) {
+        menuService.saveMenu(principal.getName(), menuDto.getMenuName());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // 메뉴 삭제 API
-    @Transactional
-    @PostMapping("/api/menus/delete")
+    @DeleteMapping("/api/menus/delete")
     @ResponseBody
-    public void deleteMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        if (principal != null) {
-            menuService.deleteMenu(principal.getName(), menuDto.getMenuName());
-        }
+    public ResponseEntity<Void> deleteMenu(@RequestBody MenuDto menuDto, Principal principal) {
+        menuService.deleteMenu(principal.getName(), menuDto.getMenuName());
+        return ResponseEntity.noContent().build();
     }
 
 }

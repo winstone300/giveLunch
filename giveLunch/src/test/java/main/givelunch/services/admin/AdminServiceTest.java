@@ -14,6 +14,8 @@ import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.entities.Food;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -24,7 +26,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -113,10 +114,10 @@ class AdminServiceTest {
 
         // when & then
         assertThatThrownBy(() -> adminService.updateFoodAndNutrition(invalidId, dto))
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(FoodNotFoundException.class)
                 .satisfies(e -> {
-                    ResponseStatusException rse = (ResponseStatusException) e;
-                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    FoodNotFoundException foodNotFoundException = (FoodNotFoundException) e;
+                    assertThat(foodNotFoundException.getErrorCode()).isEqualTo(ErrorCode.FOOD_NOT_FOUND);
                 });
     }
 

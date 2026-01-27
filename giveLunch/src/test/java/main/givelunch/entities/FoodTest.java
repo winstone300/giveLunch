@@ -3,6 +3,8 @@ package main.givelunch.entities;
 import java.math.BigDecimal;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -78,8 +80,12 @@ class FoodTest {
 
         // when & then
         assertThatThrownBy(() -> food.updateFood(invalidDto))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("음식 이름은 필수입니다.");
+                .isInstanceOf(ValidationException.class)
+                .satisfies(exception -> {
+                    ValidationException validationException = (ValidationException) exception;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_FOOD_NAME);
+                })
+                .hasMessage(ErrorCode.INVALID_FOOD_NAME.getMessage());
     }
 
     @Test

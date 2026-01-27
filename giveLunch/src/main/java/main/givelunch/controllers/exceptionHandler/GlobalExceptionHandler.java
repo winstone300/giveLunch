@@ -1,6 +1,7 @@
 package main.givelunch.controllers.exceptionHandler;
 
 import main.givelunch.dto.ErrorResponseDto;
+import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.FoodNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -11,7 +12,8 @@ public class GlobalExceptionHandler {
     // Food data가 없을 때
     @ExceptionHandler(FoodNotFoundException.class)
     public ResponseEntity<ErrorResponseDto> foodNotFound(FoodNotFoundException e) {
-        ErrorResponseDto response = new ErrorResponseDto("FOOD_NOT_FOUND", e.getMessage());
-        return ResponseEntity.status(404).body(response);
+        ErrorCode errorCode = e.getErrorCode();
+        ErrorResponseDto response = new ErrorResponseDto(errorCode.getCode(), e.getMessage());
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
 }

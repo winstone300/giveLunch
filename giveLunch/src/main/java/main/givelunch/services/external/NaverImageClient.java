@@ -14,8 +14,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
@@ -35,7 +36,7 @@ public class NaverImageClient {
 
     private final NaverImageProperties properties;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
 
     public Optional<String> fetchFirstImageUrl(String query) {
         if (query == null || query.isBlank()) {
@@ -62,20 +63,18 @@ public class NaverImageClient {
     }
 
     private Optional<String> fetchBody(URI uri, String query) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set(HEADER_CLIENT_ID, properties.clientId());
-        headers.set(HEADER_CLIENT_SECRET, properties.clientSecret());
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
         try {
-            ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return Optional.empty();
-            }
-            return Optional.of(response.getBody());
-        } catch (HttpStatusCodeException e) {
+            String body = restClient.get()
+                    .uri(uri)
+                    .header(HEADER_CLIENT_ID, properties.clientId())
+                    .header(HEADER_CLIENT_SECRET, properties.clientSecret())
+                    .retrieve()
+                    .body(String.class);
+            return Optional.ofNullable(body);
+        } catch (RestClientResponseException e) { // 4xx, 5xx 에러
             log.warn(FAIL_REQUEST_LOG, e.getStatusCode(), query, e);
             return Optional.empty();
-        } catch (RestClientException e) {
+        } catch (RestClientException e) { // 기타 네트워크 에러
             log.warn(FAIL_REQUEST_LOG, "UNKNOWN", query, e);
             return Optional.empty();
         }
