@@ -75,7 +75,7 @@ class FoodControllerIntegrationTest {
         Food food = foodRepository.save(Food.from(sampleFoodDto("우동", "면", 280)));
 
         // when & then
-        mockMvc.perform(get("/api/foods/getId").param("name", "우동"))
+        mockMvc.perform(get("/api/foods/search").param("name", "우동"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(String.valueOf(food.getId())));
     }
@@ -89,7 +89,7 @@ class FoodControllerIntegrationTest {
         when(dataGoKrFoodClient.fetchFoodsByName(eq("치킨"), anyInt()))
                 .thenReturn(List.of(externalDto));
 
-        mockMvc.perform(get("/api/foods/external").param("name", "치킨"))
+        mockMvc.perform(get("/api/foods/search/external").param("name", "치킨"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("치킨"))
                 .andExpect(jsonPath("$[0].category").value("양식"))
@@ -103,7 +103,7 @@ class FoodControllerIntegrationTest {
         when(dataGoKrFoodClient.fetchFoodsByName(eq("없는메뉴"), anyInt()))
                 .thenReturn(List.of());
 
-        mockMvc.perform(get("/api/foods/external").param("name", "없는메뉴"))
+        mockMvc.perform(get("/api/foods/search/external").param("name", "없는메뉴"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("FOOD_NOT_FOUND"));
     }

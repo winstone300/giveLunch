@@ -291,7 +291,7 @@
         renderNutritionLoading(menuName);
 
         try {
-            const url = `/api/foods/getId?name=${encodeURIComponent(menuName)}`;
+            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
             const idResp = await fetch(url);
             if (!idResp.ok) {
                 const errorData = await idResp.json().catch(() => null);
@@ -325,7 +325,7 @@
                 }
 
                 // 외부 api 호출
-                const externalResp = await fetch(`/api/foods/external?name=${encodeURIComponent(menuName)}`);
+                const externalResp = await fetch(`/api/foods/search/external?name=${encodeURIComponent(menuName)}`);
                 if (!externalResp.ok) {
                     const errorData = await externalResp.json().catch(() => null);
                     const msg = errorData ? errorData.message : "알 수 없는 오류";

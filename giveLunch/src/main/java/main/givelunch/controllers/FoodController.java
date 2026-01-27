@@ -28,12 +28,12 @@ public class FoodController {
         return foodNutritionService.getFoodNutrition(foodId);
     }
 
-    @GetMapping("/getId")
+    @GetMapping("/search")
     public Long getId(@RequestParam("name") String name) {
        return foodSearchService.getIdByName(name);
     }
 
-    @GetMapping("/external")
+    @GetMapping("/search/external")
     public List<FoodAndNutritionDto> getExternalFood(@RequestParam("name") String name,
                                                                      @AuthenticationPrincipal UserDetails userDetails) {
         List<FoodAndNutritionDto> results = foodSearchService.searchExternalFoods(name,userDetails);
