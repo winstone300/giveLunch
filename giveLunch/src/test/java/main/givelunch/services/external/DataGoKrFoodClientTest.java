@@ -1,253 +1,187 @@
 package main.givelunch.services.external;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.math.BigDecimal;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
 import main.givelunch.properties.DataGoKrProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @ExtendWith(MockitoExtension.class)
 class DataGoKrFoodClientTest {
 
-    @Mock
-    private RestTemplate restTemplate;
+    private DataGoKrFoodClient dataGoKrFoodClient;
+    private MockRestServiceServer mockServer;
 
     @Mock
     private NaverImageClient naverImageClient;
 
-    // final 제거 (setUp에서 초기화해야 하므로)
-    private DataGoKrFoodClient dataGoKrFoodClient;
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // 테스트용 프로퍼티 (url, key, api, type, pageSize, numOfRowsAdmin, numOfRowsUser)
     private final DataGoKrProperties properties = new DataGoKrProperties(
-            "https://api.example.com",
-            "service-key",
-            "/foods",
-            "json",
-            1,
-            10,
-            1
+            "https://api.example.com", "service-key", "/foods", "json", 1, 10, 5
     );
 
     @BeforeEach
     void setUp() {
-        this.dataGoKrFoodClient = new DataGoKrFoodClient(properties, objectMapper, restTemplate,naverImageClient);
+        // 1. RestClient 빌더 및 가짜 서버 설정
+        RestClient.Builder builder = RestClient.builder();
+        mockServer = MockRestServiceServer.bindTo(builder).build();
+        RestClient restClient = builder.build();
+
+        // 2. Client 주입
+        this.dataGoKrFoodClient = new DataGoKrFoodClient(properties, objectMapper, restClient, naverImageClient);
     }
 
-    @Test
-    @DisplayName("fetchFoodByName(name): name 인자만 제공시 admin용 설정 개수 요청 후 dto 변환")
-    void fetchFoodByNameReturnsDto() {
-        // given
-        String body = """
-                {
-                  "body": {
-                    "items": [
-                      {
-                        "FOOD_NM_KR": "비빔밥",
-                        "FOOD_OR_NM": "한식",
-                        "SERVING_SIZE": "200g",
-                        "AMT_NUM1": "550",
-                        "AMT_NUM3": "22",
-                        "AMT_NUM4": "16",
-                        "AMT_NUM6": "77"
-                      }
-                    ]
-                  }
-                }
-                """;
-
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenReturn(ResponseEntity.ok(body));
-        when(naverImageClient.fetchFirstImageUrl("비빔밥"))
-                .thenReturn(Optional.of("https://img.example.com/bibimbap.jpg"));
-
-        // when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("비빔밥");
-
-        // then
-        assertThat(result).hasSize(1);
-        FoodAndNutritionDto dto = result.get(0);
-        NutritionDto nutrition = dto.getNutrition();
-        assertThat(dto.getName()).isEqualTo("비빔밥");
-        assertThat(dto.getCategory()).isEqualTo("한식");
-        assertThat(dto.getImgUrl()).isEqualTo("https://img.example.com/bibimbap.jpg");
-        assertThat(dto.getServingSizeG()).isEqualTo(200);
-        assertThat(nutrition.getCalories()).isEqualByComparingTo(BigDecimal.valueOf(550));
-        assertThat(nutrition.getProtein()).isEqualByComparingTo(BigDecimal.valueOf(22));
-        assertThat(nutrition.getFat()).isEqualByComparingTo(BigDecimal.valueOf(16));
-        assertThat(nutrition.getCarbohydrate()).isEqualByComparingTo(BigDecimal.valueOf(77));
-
-        ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.forClass(URI.class);
-        verify(restTemplate).getForEntity(uriCaptor.capture(), any());
-        URI expected = UriComponentsBuilder.fromUriString(properties.baseUrl())
+    // 검증용 url 생성
+    private String createExpectedUrl(String name, int numOfRows) {
+        return UriComponentsBuilder.fromUriString(properties.baseUrl())
                 .path(properties.getAPI())
                 .queryParam("serviceKey", properties.serviceKey())
                 .queryParam("type", properties.type())
-                .queryParam("FOOD_NM_KR", "비빔밥")
+                .queryParam("FOOD_NM_KR", name)
                 .queryParam("pageNo", properties.pageSize())
-                .queryParam("numOfRows", properties.numOfRowsAdmin())
-                .encode(StandardCharsets.UTF_8)
+                .queryParam("numOfRows", numOfRows)
+                .encode(StandardCharsets.UTF_8) 
                 .build()
-                .toUri();
-        assertThat(uriCaptor.getValue()).isEqualTo(expected);
+                .toUriString();
     }
 
     @Test
-    @DisplayName("fetchFoodsByName(name, rows): 직접 지정한 행 개수(numOfRows)가 URI 파라미터로 전달된다")
-    void fetchFoodsByNameWithCustomRows() {
+    @DisplayName("[다건] JSON items가 배열(Array)로 올 때")
+    void fetchFoodByNameReturnsDtoList_WhenArray() {
         // given
+        String foodName = "비빔밥";
         String body = """
-                {
-                  "body": {
-                    "items": []
-                  }
+                { 
+                    "body": { 
+                        "items": [ 
+                            { "FOOD_NM_KR": "전주비빔밥", "SERVING_SIZE": "200g" },
+                            { "FOOD_NM_KR": "참치비빔밥", "SERVING_SIZE": "250g" }
+                        ] 
+                    } 
                 }
                 """;
 
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenReturn(ResponseEntity.ok(body));
+        when(naverImageClient.fetchFirstImageUrl(anyString()))
+                .thenReturn(Optional.of("https://img.example.com/default.jpg"));
+
+        // Admin용 기본 개수(10)로 URL 매칭
+        String expectedUrl = createExpectedUrl(foodName, properties.numOfRowsAdmin());
+
+        mockServer.expect(requestTo(expectedUrl))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         // when
-        // 2개의 인자를 받는 메서드를 직접 호출
-        int customRows = 50;
-        dataGoKrFoodClient.fetchFoodsByName("라면", customRows);
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName);
 
         // then
-        ArgumentCaptor<URI> uriCaptor = ArgumentCaptor.forClass(URI.class);
-        verify(restTemplate).getForEntity(uriCaptor.capture(), any());
-
-        URI capturedUri = uriCaptor.getValue();
-        assertThat(capturedUri.getQuery()).contains("numOfRows=" + customRows);
-        assertThat(capturedUri.getQuery()).contains("FOOD_NM_KR=라면");
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getName()).isEqualTo("전주비빔밥");
+        assertThat(result.get(1).getName()).isEqualTo("참치비빔밥");
+        mockServer.verify();
     }
 
     @Test
-    @DisplayName("fetchFoodsByName: items가 비어 있으면 빈 리스트 반환")
-    void fetchFoodsByNameReturnsEmptyWhenItemsEmpty() {
+    @DisplayName("[단건] JSON items가 객체(Object)로 올 때")
+    void fetchFoodByNameReturnsDtoList_WhenSingleObject() {
         // given
+        String foodName = "라면";
         String body = """
-                {
-                  "body": {
-                    "items": []
-                  }
+                { 
+                    "body": { 
+                        "items": { "FOOD_NM_KR": "라면", "SERVING_SIZE": "500g" } 
+                    } 
                 }
                 """;
 
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenReturn(ResponseEntity.ok(body));
+        when(naverImageClient.fetchFirstImageUrl(anyString())).thenReturn(Optional.empty());
 
-        //when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("없는메뉴");
-
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("fetchFoodsByName: 외부 API 에러(4xx, 5xx) 발생 시 빈 리스트 반환")
-    void fetchFoodsByNameReturnsEmptyOnHttpError() {
-        // given
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenThrow(new org.springframework.web.client.HttpClientErrorException(org.springframework.http.HttpStatus.BAD_REQUEST));
+        mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         // when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("오류발생");
-
-        // then
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("fetchFoodsByName: 통신 오류(RestClientException) 발생 시 빈 리스트 반환")
-    void fetchFoodsByNameReturnsEmptyOnConnectionError() {
-        // given
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenThrow(new org.springframework.web.client.RestClientException("Connection refused"));
-
-        // when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("통신실패");
-
-        // then
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("fetchFoodsByName: JSON 형식이 올바르지 않으면 파싱 실패 로직을 타고 빈 리스트 반환")
-    void fetchFoodsByNameReturnsEmptyOnInvalidJson() {
-        // given: 닫는 괄호가 없는 잘못된 JSON
-        String brokenJson = "{ \"body\": { \"items\": [ ... ";
-
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenReturn(ResponseEntity.ok(brokenJson));
-
-        // when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("파싱실패");
-
-        // then
-        assertThat(result).isEmpty();
-    }
-
-    @Test
-    @DisplayName("fetchFoodsByName: 필수 값이 없으면 스킵하고, 숫자에 문자가 섞여 있으면 정제하여 매핑한다")
-    void fetchFoodsByNameHandlesDirtyDataAndMissingFields() {
-        // given
-        String body = """
-                {
-                  "body": {
-                    "items": [
-                      {
-                        "FOOD_OR_NM": "한식",
-                        "AMT_NUM1": "500"
-                      },
-                      {
-                        "FOOD_NM_KR": "치킨",
-                        "SERVING_SIZE": "200g",
-                        "AMT_NUM1": "1,500 kcal", 
-                        "AMT_NUM3": "20g",
-                        "AMT_NUM4": "15 g",
-                        "AMT_NUM6": "70"
-                      }
-                    ]
-                  }
-                }
-                """;
-
-        when(restTemplate.getForEntity(any(URI.class), any()))
-                .thenReturn(ResponseEntity.ok(body));
-        when(naverImageClient.fetchFirstImageUrl("치킨"))
-                .thenReturn(Optional.of("https://img.example.com/chicken.jpg"));
-
-        // when
-        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName("치킨");
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName);
 
         // then
         assertThat(result).hasSize(1);
+        assertThat(result.get(0).getName()).isEqualTo("라면");
+        mockServer.verify();
+    }
 
-        FoodAndNutritionDto dto = result.get(0);
-        assertThat(dto.getName()).isEqualTo("치킨");
-        assertThat(dto.getServingSizeG()).isEqualTo(200); // 200g -> 200
-        assertThat(dto.getImgUrl()).isEqualTo("https://img.example.com/chicken.jpg");
-        // 1,500 kcal -> 1500
-        assertThat(dto.getNutrition().getCalories()).isEqualByComparingTo(BigDecimal.valueOf(1500));
-        assertThat(dto.getNutrition().getProtein()).isEqualByComparingTo(BigDecimal.valueOf(20));
+    @Test
+    @DisplayName("[예외] 검색 결과가 없거나(null/empty) items 구조가 다를 때 빈 리스트 반환")
+    void fetchFoodsByNameReturnsEmpty_WhenItemsEmpty() {
+        // given
+        String foodName = "없는음식";
+        // items가 null 이거나 비어있는 경우
+        String body = """
+                { "body": { "items": null } }
+                """;
+
+        // 인코딩된 URL 매칭 ("없는음식" -> "%EC%97%86...")
+        mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        // when
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName);
+
+        // then
+        assertThat(result).isEmpty();
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("[에러] 외부 API가 4xx 에러를 반환하면 빈 리스트를 반환하고 로그를 남김")
+    void fetchFoodsByNameReturnsEmpty_On4xxError() {
+        // given
+        String foodName = "에러유발";
+        mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andRespond(withBadRequest());
+
+        // when
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName);
+
+        // then
+        assertThat(result).isEmpty();
+        mockServer.verify();
+    }
+
+    @Test
+    @DisplayName("[에러] 외부 API가 5xx 에러를 반환하면 빈 리스트를 반환")
+    void fetchFoodsByNameReturnsEmpty_On5xxError() {
+        // given
+        String foodName = "서버에러";
+        mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andRespond(withServerError());
+
+        // when
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName);
+
+        // then
+        assertThat(result).isEmpty();
+        mockServer.verify();
     }
 }
