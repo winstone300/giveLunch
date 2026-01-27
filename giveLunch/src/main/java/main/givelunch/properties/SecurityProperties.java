@@ -1,15 +1,16 @@
 package main.givelunch.properties;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties(prefix = "app.security")
-public class SecurityProperties {
-    private final List<String> permitAll;
+public record SecurityProperties(
+        // 설정 파일에 값이 없으면 빈 리스트([])
+        @DefaultValue
+        List<String> permitAllUser,
 
-    public List<String> getPermitAll() { return permitAll; }
-    public SecurityProperties(List<String> permitAll) {
-        this.permitAll = (permitAll != null) ? permitAll : new ArrayList<>();
-    }
-}
+        // 설정 파일에 값이 없으면 "/admin/**"
+        @DefaultValue("/admin/**")
+        List<String> permitAdmin
+) {}

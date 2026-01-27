@@ -68,13 +68,13 @@ class RouletteControllerIntegrationTest {
 
     @Test
     @WithMockUser(username = "tester")
-    @DisplayName("DELETE /api/menus/delete: 로그인 user가 메뉴를 삭제하면 제거")
+    @DisplayName("DELETE /api/menus: 로그인 user가 메뉴를 삭제하면 제거")
     void deleteMenuRemovesForAuthenticatedUser() throws Exception {
         // given
         menuRepository.save(Menu.of("tester", "칼국수"));
 
         //when
-        mockMvc.perform(delete("/api/menus/delete")
+        mockMvc.perform(delete("/api/menus")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"menuName\":\"칼국수\"}"))

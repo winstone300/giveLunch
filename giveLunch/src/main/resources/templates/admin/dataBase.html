@@ -452,7 +452,7 @@
         }
         searchStatus.textContent = '외부 데이터 조회 중...';
         searchResults.innerHTML = '';
-        const resp = await fetch(`/api/foods/external?name=${encodeURIComponent(name)}`);
+        const resp = await fetch(`/api/foods/search/external?name=${encodeURIComponent(name)}`);
         if (!resp.ok) {
             searchStatus.textContent = '검색 결과가 없습니다.';
             renderSearchResults([]);

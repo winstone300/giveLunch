@@ -189,7 +189,7 @@
         if (isLoggedIn) {
             // 회원: DB에서 삭제
             try {
-                const response = await fetch('/api/menus/delete', {
+                const response = await fetch('/api/menus', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
                     body: JSON.stringify({ menuName: menuName })
@@ -291,7 +291,7 @@
         renderNutritionLoading(menuName);
 
         try {
-            const url = `/api/foods/getId?name=${encodeURIComponent(menuName)}`;
+            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
             const idResp = await fetch(url);
             if (!idResp.ok) {
                 const errorData = await idResp.json().catch(() => null);
@@ -302,8 +302,30 @@
 
             const idData = await idResp.text();
             const foodId = Number(idData);
+            // 내부 db에 영양정보 없는 경우
             if (!foodId) {
-                const externalResp = await fetch(`/api/foods/external?name=${encodeURIComponent(menuName)}`);
+                // 비 로그인시 외부 api 호출 차단
+                if (!isLoggedIn) {
+                    nutritionImage.classList.add('is-hidden');
+                    nutritionImage.removeAttribute('src');
+                    nutritionContent.innerHTML = `
+                        <div style="text-align:center; padding: 10px 0;">
+                            <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
+                            <div style="font-weight:bold; color:#2d3436; margin-bottom:6px;">로그인 필요</div>
+                            <div class="muted" style="font-size:13px; margin-bottom:12px;">
+                                '${menuName}' 정보가 내부 DB에 없습니다.<br>
+                                외부 데이터 검색은 회원만 가능합니다.
+                            </div>
+                            <a href="/login" class="auth-btn login-btn" style="display:inline-block; font-size:13px; text-decoration:none;">
+                                로그인 하러 가기
+                            </a>
+                        </div>
+                    `;
+                    return; // 함수 종료 (API 호출 안함)
+                }
+
+                // 외부 api 호출
+                const externalResp = await fetch(`/api/foods/search/external?name=${encodeURIComponent(menuName)}`);
                 if (!externalResp.ok) {
                     const errorData = await externalResp.json().catch(() => null);
                     const msg = errorData ? errorData.message : "알 수 없는 오류";
