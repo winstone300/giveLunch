@@ -1,5 +1,6 @@
 package main.givelunch.controllers.admin;
 
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodDto;
@@ -27,28 +28,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminFoodController {
     private final AdminService adminService;
 
-    //post,put,delete에 상태코드 추가 필요
+    @Operation(summary = "음식 목록 조회", description = "관리자용 음식 목록을 조회")
     @GetMapping
     public List<FoodDto> loadFoods() {
         return adminService.loadFoods();
     }
 
+    @Operation(summary = "음식 및 영양 정보 생성", description = "관리자 권한으로 음식과 영양 정보를 등록")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<Void> createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
+    public void createFoodAndNutrition(@RequestBody FoodAndNutritionDto request) {
         adminService.saveFoodAndNutrition(request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    @Operation(summary = "음식 삭제", description = "관리자 권한으로 음식과 영양 정보를 삭제")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFood(@PathVariable Long id) {
+    public void deleteFood(@PathVariable Long id) {
         adminService.deleteFoodsAndNutritions(id);
-        return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "음식 및 영양 정보 수정", description = "관리자 권한으로 음식과 영양 정보를 수정")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateFoodAndNutrition(@PathVariable Long id, @RequestBody FoodAndNutritionDto request) {
+    public void updateFoodAndNutrition(@PathVariable Long id, @RequestBody FoodAndNutritionDto request) {
         adminService.updateFoodAndNutrition(id, request);
-        return ResponseEntity.noContent().build();
     }
 }
