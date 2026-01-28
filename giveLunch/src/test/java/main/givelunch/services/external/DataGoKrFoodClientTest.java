@@ -40,7 +40,7 @@ class DataGoKrFoodClientTest {
 
     // 테스트용 프로퍼티 (url, key, api, type, pageSize, numOfRowsAdmin, numOfRowsUser)
     private final DataGoKrProperties properties = new DataGoKrProperties(
-            "https://api.example.com", "service-key", "/foods", "json", 1, 10, 5
+            "https://api.example.com", "service-key", "/foods", "json", 1, 10, 1
     );
 
     @BeforeEach
@@ -63,7 +63,7 @@ class DataGoKrFoodClientTest {
                 .queryParam("FOOD_NM_KR", name)
                 .queryParam("pageNo", properties.pageSize())
                 .queryParam("numOfRows", numOfRows)
-                .encode(StandardCharsets.UTF_8) 
+                .encode(StandardCharsets.UTF_8)
                 .build()
                 .toUriString();
     }
@@ -105,6 +105,42 @@ class DataGoKrFoodClientTest {
     }
 
     @Test
+    @DisplayName("[다건] JSON items가 배열(Array)로 올 때 - fetchFoodsByName 두 인자 넣을때")
+    void fetchFoodByNameReturnsDtoList_WhenArray_WithNumOfRows() {
+        // given
+        String foodName = "비빔밥";
+        String body = """
+                { 
+                    "body": { 
+                        "items": [ 
+                            { "FOOD_NM_KR": "전주비빔밥", "SERVING_SIZE": "200g" },
+                            { "FOOD_NM_KR": "참치비빔밥", "SERVING_SIZE": "250g" }
+                        ] 
+                    } 
+                }
+                """;
+
+        when(naverImageClient.fetchFirstImageUrl(anyString()))
+                .thenReturn(Optional.of("https://img.example.com/default.jpg"));
+
+        // Admin용 기본 개수(10)로 URL 매칭
+        String expectedUrl = createExpectedUrl(foodName, properties.numOfRowsUser());
+
+        mockServer.expect(requestTo(expectedUrl))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
+
+        // when
+        List<FoodAndNutritionDto> result = dataGoKrFoodClient.fetchFoodsByName(foodName,properties.numOfRowsUser());
+
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getName()).isEqualTo("전주비빔밥");
+        assertThat(result.get(1).getName()).isEqualTo("참치비빔밥");
+        mockServer.verify();
+    }
+
+    @Test
     @DisplayName("[단건] JSON items가 객체(Object)로 올 때")
     void fetchFoodByNameReturnsDtoList_WhenSingleObject() {
         // given
@@ -120,6 +156,7 @@ class DataGoKrFoodClientTest {
         when(naverImageClient.fetchFirstImageUrl(anyString())).thenReturn(Optional.empty());
 
         mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         // when
@@ -143,6 +180,7 @@ class DataGoKrFoodClientTest {
 
         // 인코딩된 URL 매칭 ("없는음식" -> "%EC%97%86...")
         mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
         // when
@@ -159,6 +197,7 @@ class DataGoKrFoodClientTest {
         // given
         String foodName = "에러유발";
         mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andExpect(method(HttpMethod.GET))
                 .andRespond(withBadRequest());
 
         // when
@@ -175,6 +214,7 @@ class DataGoKrFoodClientTest {
         // given
         String foodName = "서버에러";
         mockServer.expect(requestTo(createExpectedUrl(foodName, properties.numOfRowsAdmin())))
+                .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 
         // when
