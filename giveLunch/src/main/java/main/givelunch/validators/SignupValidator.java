@@ -16,10 +16,10 @@ public class SignupValidator {
     private final EmailVerificationRepository emailVerificationRepository;
 
     public void validate(SignupRequestDto signupRequestDto) {
-        String userName = signupRequestDto.getUserName();
-        String password = signupRequestDto.getPassword();
-        String passwordConfirm = signupRequestDto.getPasswordConfirm();
-        String email = signupRequestDto.getEmail();
+        String userName = signupRequestDto.userName();
+        String password = signupRequestDto.password();
+        String passwordConfirm = signupRequestDto.passwordConfirm();
+        String email = signupRequestDto.email();
 
         if (userName == null || userName.isBlank()) {
             throw new ValidationException(ErrorCode.INVALID_USERNAME);
