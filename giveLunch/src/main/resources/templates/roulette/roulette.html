@@ -263,7 +263,7 @@
         }
         suggestTimer = setTimeout(async () => {
             try {
-                const response = await fetch(`/api/foods/suggest?query=${encodeURIComponent(query)}`);
+                const response = await fetch(`/api/menus/suggest?query=${encodeURIComponent(query)}`);
                 if (!response.ok) {
                     clearSuggestions();
                     return;
