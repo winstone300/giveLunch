@@ -25,6 +25,15 @@
         input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
         input:focus { border-color: var(--primary); }
         .add-btn { background: #55efc4; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .suggestions { margin-top: 8px; background: #fff; border: 1px solid #eee; border-radius: 10px; box-shadow: 0 8px 18px rgba(0,0,0,0.08); overflow: hidden; }
+        .suggestions.hidden { display: none; }
+        .suggestion-item { padding: 10px 12px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .suggestion-item:hover { background: #f8f9ff; }
+        .suggestion-meta { display: flex; flex-direction: column; gap: 2px; }
+        .suggestion-meta span { color: #636e72; font-size: 12px; }
+        .suggestion-thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: #f1f2f6; }
+        .suggestion-fallback { width: 36px; height: 36px; border-radius: 8px; background: #f1f2f6; display: flex;
+            align-items: center; justify-content: center; font-weight: 700; color: #636e72; }
 
         .main-grid {
             width: 100%;
@@ -95,6 +104,7 @@
         <input type="text" id="menu-input" placeholder="새 메뉴 추가" onkeypress="if(event.keyCode==13) addMenu()">
         <button class="add-btn" onclick="addMenu()">추가</button>
     </div>
+    <div id="menu-suggestions" class="suggestions hidden"></div>
 </div>
 
 <div class="main-grid">
@@ -127,6 +137,8 @@
     const resultDiv = document.getElementById('result');
     const nutritionContent = document.getElementById('nutrition-content');
     const nutritionImage = document.getElementById('nutrition-image');
+    const menuInput = document.getElementById('menu-input');
+    const suggestionsBox = document.getElementById('menu-suggestions');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
@@ -148,6 +160,35 @@
         ).join('');
     }
 
+    function clearSuggestions() {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.innerHTML = '';
+    }
+
+    function renderSuggestions(items) {
+        if (!items.length) {
+            clearSuggestions();
+            return;
+        }
+        suggestionsBox.innerHTML = items
+            .map(item => {
+                const name = item.name ?? "";
+                const imgUrl = item.imgUrl ?? "";
+                const thumb = imgUrl
+                    ? `<img class="suggestion-thumb" src="${imgUrl}" alt="${name}">`
+                    : `<div class="suggestion-fallback">${name ? name[0] : "?"}</div>`;
+                return `<div class="suggestion-item" data-value="${name}">
+                    ${thumb}
+                    <div class="suggestion-meta">
+                        <div>${name}</div>
+                        <span>추천</span>
+                    </div>
+                </div>`;
+            })
+            .join('');
+        suggestionsBox.classList.remove('hidden');
+    }
+
     function buildCsrfHeaders() {
         const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
         const headerName = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -156,7 +197,7 @@
 
     // 2. 메뉴 추가 (분기 처리)
     async function addMenu() {
-        const input = document.getElementById('menu-input');
+        const input = menuInput;
         const menuName = input.value.trim();
         if (!menuName) return;
 
@@ -179,6 +220,7 @@
         }
 
         input.value = "";
+        clearSuggestions();
         updateGame();
     }
 
@@ -210,6 +252,42 @@
         renderMenuList();
         drawWheel();
     }
+
+    let suggestTimer = null;
+    menuInput.addEventListener('input', () => {
+        if (suggestTimer) clearTimeout(suggestTimer);
+        const query = menuInput.value.trim();
+        if (!query) {
+            clearSuggestions();
+            return;
+        }
+        suggestTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/foods/suggest?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    clearSuggestions();
+                    return;
+                }
+                const data = await response.json();
+                renderSuggestions(data);
+            } catch (e) {
+                clearSuggestions();
+            }
+        }, 250);
+    });
+
+    suggestionsBox.addEventListener('click', (event) => {
+        const target = event.target.closest('.suggestion-item');
+        if (!target) return;
+        menuInput.value = target.dataset.value;
+        clearSuggestions();
+        menuInput.focus();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (event.target === menuInput || suggestionsBox.contains(event.target)) return;
+        clearSuggestions();
+    });
 
     // 룰렛 그리기
     const colors = ["#6c5ce7", "#74b9ff", "#a29bfe", "#81ecec", "#55efc4", "#fab1a0", "#ff7675", "#fd79a8"];

@@ -1,8 +1,10 @@
 package main.givelunch.services.roulette;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodSuggestionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.properties.DataGoKrProperties;
@@ -45,6 +47,17 @@ public class FoodSearchService {
         int fetchCount = isAdmin(user) ? properties.numOfRowsAdmin() : properties.numOfRowsUser();
 
         return dataGoKrFoodClient.fetchFoodsByName(name, fetchCount);
+    }
+
+    public List<FoodSuggestionDto> suggestFoods(String name) {
+        if (name == null || name.isBlank()) {
+            return List.of();
+        }
+        return foodRepository
+                .findByNameContainingOrderByShortestName(name.trim(), PageRequest.of(0, 10))
+                .stream()
+                .map(FoodSuggestionDto::from)
+                .collect(Collectors.toList());
     }
 
     private boolean isAdmin(UserDetails user) {
