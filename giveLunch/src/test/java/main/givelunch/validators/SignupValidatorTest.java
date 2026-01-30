@@ -33,11 +33,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 아이디가 비어있으면 예외")
     void validate_throwsWhenUserNameMissing() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName(" ");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                " ",
+                "password",
+                "password",
+                "user@example.com"
+        );
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
                 .isInstanceOf(ValidationException.class)
@@ -51,11 +52,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 비밀번호가 비어있으면 예외")
     void validate_throwsWhenPasswordMissing() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword(" ");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                " ",
+                "password",
+                "user@example.com"
+        );
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
                 .isInstanceOf(ValidationException.class)
@@ -69,11 +71,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 비밀번호 확인이 다르면 예외")
     void validate_throwsWhenPasswordMismatch() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password2");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password2",
+                "user@example.com"
+        );
 
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
@@ -88,11 +91,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 아이디가 이미 있으면 예외")
     void validate_throwsWhenUserNameExists() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password",
+                "user@example.com"
+        );
 
         when(userRepository.existsByUserName("user")).thenReturn(true);
 
@@ -108,11 +112,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 이메일이 이미 있으면 예외")
     void validate_throwsWhenEmailExists() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password",
+                "user@example.com"
+        );
 
         when(userRepository.existsByUserName("user")).thenReturn(false);
         when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
@@ -129,11 +134,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 정상 입력이면 예외 없음")
     void validate_passesWhenInputValid() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password",
+                "user@example.com"
+        );
 
         when(userRepository.existsByUserName("user")).thenReturn(false);
         when(userRepository.existsByEmail("user@example.com")).thenReturn(false);
@@ -146,11 +152,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 이메일이 비어있으면 예외")
     void validate_throwsWhenEmailMissing() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail(" ");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password",
+                " "
+        );
 
         assertThatThrownBy(() -> signupValidator.validate(dto))
                 .isInstanceOf(ValidationException.class)
@@ -164,11 +171,12 @@ class SignupValidatorTest {
     @Test
     @DisplayName("validate() - 이메일 인증이 안되면 예외")
     void validate_throwsWhenEmailNotVerified() {
-        SignupRequestDto dto = new SignupRequestDto();
-        dto.setUserName("user");
-        dto.setPassword("password");
-        dto.setPasswordConfirm("password");
-        dto.setEmail("user@example.com");
+        SignupRequestDto dto = new SignupRequestDto(
+                "user",
+                "password",
+                "password",
+                "user@example.com"
+        );
 
         when(userRepository.existsByUserName("user")).thenReturn(false);
         when(userRepository.existsByEmail("user@example.com")).thenReturn(false);

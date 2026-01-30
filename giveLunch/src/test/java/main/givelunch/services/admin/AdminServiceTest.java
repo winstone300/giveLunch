@@ -54,8 +54,8 @@ class AdminServiceTest {
 
         // then
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getName()).isEqualTo("비빔밥");
-        assertThat(result.get(1).getName()).isEqualTo("파스타");
+        assertThat(result.get(0).name()).isEqualTo("비빔밥");
+        assertThat(result.get(1).name()).isEqualTo("파스타");
     }
 
     @Test
@@ -81,10 +81,15 @@ class AdminServiceTest {
                 new BigDecimal("5"), new BigDecimal("20")
         );
 
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("새로운음식");
-        dto.setCategory("테스트");
-        dto.setNutrition(nutritionDto); // 영양 정보 포함
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                "새로운음식",
+                "테스트",
+                null,
+                null,
+                nutritionDto,
+                null
+        );
 
         ArgumentCaptor<Food> captor = ArgumentCaptor.forClass(Food.class);
 
@@ -108,7 +113,15 @@ class AdminServiceTest {
     void updateFoodAndNutrition_throwsNotFound() {
         // given
         Long invalidId = 999L;
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
         when(foodRepository.findById(invalidId)).thenReturn(Optional.empty());
 
@@ -135,10 +148,15 @@ class AdminServiceTest {
         NutritionDto newNutritionDto = NutritionDto.of(
                 new BigDecimal("500"), BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ONE
         );
-        FoodAndNutritionDto updateDto = new FoodAndNutritionDto();
-        updateDto.setName("신형음식");
-        updateDto.setCategory("신형");
-        updateDto.setNutrition(newNutritionDto);
+        FoodAndNutritionDto updateDto = FoodAndNutritionDto.of(
+                null,
+                "신형음식",
+                "신형",
+                null,
+                null,
+                newNutritionDto,
+                null
+        );
 
         when(foodRepository.findById(foodId)).thenReturn(Optional.of(existingFood));
 

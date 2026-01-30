@@ -16,10 +16,15 @@ class FoodTest {
     @DisplayName("FoodAndNutritionDto로 Food 생성 시 데이터가 올바르게 매핑")
     void createFoodFromDto() {
         // given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("김치찌개");
-        dto.setCategory("한식");
-        dto.setServingSizeG(500);
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                "김치찌개",
+                "한식",
+                null,
+                500,
+                null,
+                null
+        );
 
         // when
         Food food = Food.from(dto);
@@ -49,17 +54,27 @@ class FoodTest {
     @DisplayName("음식 정보 업데이트 시 이름과 카테고리가 변경")
     void updateFood() {
         // given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("김치찌개");
-        dto.setCategory("한식");
-        dto.setServingSizeG(500);
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                "김치찌개",
+                "한식",
+                null,
+                500,
+                null,
+                null
+        );
 
         Food food = Food.from(dto);
 
-        FoodAndNutritionDto updateDto = new FoodAndNutritionDto();
-        updateDto.setName("참치 김치찌개");
-        updateDto.setCategory("가정식");
-        updateDto.setServingSizeG(600);
+        FoodAndNutritionDto updateDto = FoodAndNutritionDto.of(
+                null,
+                "참치 김치찌개",
+                "가정식",
+                null,
+                600,
+                null,
+                null
+        );
 
         // when
         food.updateFood(updateDto);
@@ -75,8 +90,15 @@ class FoodTest {
     void updateFoodValidation() {
         // given
         Food food = new Food();
-        FoodAndNutritionDto invalidDto = new FoodAndNutritionDto();
-        invalidDto.setName(""); // 빈 이름
+        FoodAndNutritionDto invalidDto = FoodAndNutritionDto.of(
+                null,
+                "",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
         // when & then
         assertThatThrownBy(() -> food.updateFood(invalidDto))
@@ -92,19 +114,27 @@ class FoodTest {
     @DisplayName("기존 영양정보가 없을 때 업데이트를 하면 새로운 Nutrition이 생성된다")
     void updateNutritionCreateNew() {
         // given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("김치찌개");
-        dto.setCategory("한식");
-        dto.setServingSizeG(500);
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                "김치찌개",
+                "한식",
+                null,
+                500,
+                null,
+                null
+        );
 
         Food food = Food.from(dto);
 
-        FoodAndNutritionDto updateDto = new FoodAndNutritionDto();
-        updateDto.setName("김치찌개");
-
-        NutritionDto nutritionDto = new NutritionDto();
-        nutritionDto.setCalories(BigDecimal.valueOf(100.0));
-        updateDto.setNutrition(nutritionDto);
+        FoodAndNutritionDto updateDto = FoodAndNutritionDto.of(
+                null,
+                "김치찌개",
+                "한식",
+                null,
+                500,
+                NutritionDto.of(BigDecimal.valueOf(100.0), null, null, null),
+                null
+        );
 
         // when
         food.updateFood(updateDto);
@@ -119,29 +149,30 @@ class FoodTest {
     @DisplayName("기존 영양 정보가 있을 때, 새로운 정보로 내용만 업데이트 되는지")
     void updateExistingNutrition() {
         // given
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName("기존 음식");
-        dto.setCategory("한식");
-        dto.setServingSizeG(500);
-
-
-        NutritionDto oldNutritionDto = new NutritionDto();
-        oldNutritionDto.setCalories(BigDecimal.valueOf(100.0));
-        dto.setNutrition(oldNutritionDto);
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                "기존 음식",
+                "한식",
+                null,
+                500,
+                NutritionDto.of(BigDecimal.valueOf(100.0), null, null, null),
+                null
+        );
 
         Food food = Food.from(dto);
 
         Nutrition oldNutrition = food.getNutrition();
 
         // 2. 업데이트할 데이터 준비
-        FoodAndNutritionDto updateDto = new FoodAndNutritionDto();
-        updateDto.setName("기존 음식");
-
-        NutritionDto newNutritionDto = new NutritionDto();
-        newNutritionDto.setCalories(BigDecimal.valueOf(500.0)); // 변경할 값
-        newNutritionDto.setCarbohydrate(BigDecimal.valueOf(50.0)); // 변경할 값
-
-        updateDto.setNutrition(newNutritionDto);
+        FoodAndNutritionDto updateDto = FoodAndNutritionDto.of(
+                null,
+                "기존 음식",
+                "한식",
+                null,
+                500,
+                NutritionDto.of(BigDecimal.valueOf(500.0), null, null, BigDecimal.valueOf(50.0)),
+                null
+        );
 
         // when
         food.updateFood(updateDto);

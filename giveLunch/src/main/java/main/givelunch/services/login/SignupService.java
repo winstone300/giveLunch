@@ -22,9 +22,9 @@ public class SignupService {
         signupValidator.validate(req);
 
         UserInfo user = UserInfo.builder()
-                .userName(req.getUserName())
-                .password(passwordEncoder.encode(req.getPassword()))     // 암호화
-                .email(req.getEmail())
+                .userName(req.userName())
+                .password(passwordEncoder.encode(req.password()))     // 암호화
+                .email(req.email())
                 .role(Role.USER)
                 .build();
 
