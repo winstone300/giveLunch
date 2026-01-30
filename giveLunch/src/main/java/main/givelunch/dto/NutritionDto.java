@@ -1,18 +1,14 @@
 package main.givelunch.dto;
 
 import java.math.BigDecimal;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@AllArgsConstructor(staticName = "of")
-@Setter
-@NoArgsConstructor
-public class NutritionDto {
-    private BigDecimal calories;
-    private BigDecimal protein;
-    private BigDecimal fat;
-    private BigDecimal carbohydrate;
+public record NutritionDto(
+        BigDecimal calories,
+        BigDecimal protein,
+        BigDecimal fat,
+        BigDecimal carbohydrate
+) {
+    public static NutritionDto of(BigDecimal calories, BigDecimal protein, BigDecimal fat, BigDecimal carbohydrate) {
+        return new NutritionDto(calories, protein, fat, carbohydrate);
+    }
 }

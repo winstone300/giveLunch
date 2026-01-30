@@ -40,10 +40,10 @@ public class Nutrition {
 
     public static Nutrition from(NutritionDto nutritionDto){
         Nutrition nutrition = new Nutrition();
-        nutrition.calories = nutritionDto.getCalories();
-        nutrition.carbohydrate = nutritionDto.getCarbohydrate();
-        nutrition.protein = nutritionDto.getProtein();
-        nutrition.fat = nutritionDto.getFat();
+        nutrition.calories = nutritionDto.calories();
+        nutrition.carbohydrate = nutritionDto.carbohydrate();
+        nutrition.protein = nutritionDto.protein();
+        nutrition.fat = nutritionDto.fat();
         return nutrition;
     }
 
@@ -52,9 +52,9 @@ public class Nutrition {
     }
 
     public void updateNutrition(NutritionDto nutritionDto){
-        this.calories = nutritionDto.getCalories();
-        this.carbohydrate = nutritionDto.getCarbohydrate();
-        this.protein = nutritionDto.getProtein();
-        this.fat = nutritionDto.getFat();
+        this.calories = nutritionDto.calories();
+        this.carbohydrate = nutritionDto.carbohydrate();
+        this.protein = nutritionDto.protein();
+        this.fat = nutritionDto.fat();
     }
 }

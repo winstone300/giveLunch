@@ -59,7 +59,7 @@ class FoodNutritionServiceTest {
         FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
 
         // then
-        assertThat(result.getNutrition()).isNull();
+        assertThat(result.nutrition()).isNull();
     }
 
     @Test
@@ -89,17 +89,17 @@ class FoodNutritionServiceTest {
         FoodAndNutritionDto result = foodNutritionService.getFoodNutrition(foodId);
 
         // then
-        assertThat(result.getFoodId()).isEqualTo(foodId);
-        assertThat(result.getName()).isEqualTo("샐러드");
-        assertThat(result.getCategory()).isEqualTo("외식");
-        assertThat(result.getImgUrl()).isEqualTo("http://img.test/salad");
-        assertThat(result.getServingSizeG()).isEqualTo(150);
+        assertThat(result.foodId()).isEqualTo(foodId);
+        assertThat(result.name()).isEqualTo("샐러드");
+        assertThat(result.category()).isEqualTo("외식");
+        assertThat(result.imgUrl()).isEqualTo("http://img.test/salad");
+        assertThat(result.servingSizeG()).isEqualTo(150);
 
-        assertThat(result.getNutrition().getCalories()).isEqualByComparingTo("120.5");
-        assertThat(result.getNutrition().getProtein()).isEqualByComparingTo("10.0");
-        assertThat(result.getNutrition().getFat()).isEqualByComparingTo("4.0");
-        assertThat(result.getNutrition().getCarbohydrate()).isEqualByComparingTo("15.0");
+        assertThat(result.nutrition().calories()).isEqualByComparingTo("120.5");
+        assertThat(result.nutrition().protein()).isEqualByComparingTo("10.0");
+        assertThat(result.nutrition().fat()).isEqualByComparingTo("4.0");
+        assertThat(result.nutrition().carbohydrate()).isEqualByComparingTo("15.0");
 
-        assertThat(result.getSource()).isEqualTo("INTERNAL_DB");
+        assertThat(result.source()).isEqualTo("INTERNAL_DB");
     }
 }

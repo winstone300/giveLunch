@@ -26,14 +26,15 @@ class FoodRepositoryTest {
 
     // Food 생성 메서드
     private Food createFoodWithNutrition(String name, double calories) {
-        FoodAndNutritionDto dto = new FoodAndNutritionDto();
-        dto.setName(name);
-        dto.setCategory("테스트 카테고리");
-        dto.setServingSizeG(500);
-
-        NutritionDto nutritionDto = new NutritionDto();
-        nutritionDto.setCalories(BigDecimal.valueOf(calories));
-        dto.setNutrition(nutritionDto);
+        FoodAndNutritionDto dto = FoodAndNutritionDto.of(
+                null,
+                name,
+                "테스트 카테고리",
+                null,
+                500,
+                NutritionDto.of(BigDecimal.valueOf(calories), null, null, null),
+                null
+        );
 
         return Food.from(dto);
     }

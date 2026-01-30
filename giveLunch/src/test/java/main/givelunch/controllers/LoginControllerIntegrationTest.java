@@ -9,7 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import java.time.LocalDateTime;
+import main.givelunch.entities.EmailVerification;
 import main.givelunch.entities.UserInfo;
+import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,9 @@ class LoginControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private EmailVerificationRepository emailVerificationRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Test
@@ -53,6 +59,8 @@ class LoginControllerIntegrationTest {
     @DisplayName("POST /signup: 회원가입 성공시 회원이 저장되고 로그인 페이지로 이동")
     void signupSuccessPersistsUser() throws Exception {
         // given
+        createVerifiedEmail("newuser@example.com");
+
         mockMvc.perform(post("/signup")
                         .with(csrf())
                         .param("userName", "newuser")
@@ -73,6 +81,8 @@ class LoginControllerIntegrationTest {
     @DisplayName("POST /signup: 유효성 실패 시 에러 메시지와 함께 signup 뷰를 반환")
     void signupValidationFailureReturnsSignupView() throws Exception {
         // given
+        createVerifiedEmail("invalid@example.com");
+
         mockMvc.perform(post("/signup")
                         .with(csrf())
                         .param("userName", "")
@@ -86,5 +96,17 @@ class LoginControllerIntegrationTest {
 
         // then
         assertThat(userRepository.findByUserName("")).isEmpty();
+    }
+
+    private void createVerifiedEmail(String email) {
+        LocalDateTime now = LocalDateTime.now();
+        EmailVerification verification = EmailVerification.builder()
+                .email(email)
+                .code("123456")
+                .verified(true)
+                .expiresAt(now.plusMinutes(10))
+                .createdAt(now)
+                .build();
+        emailVerificationRepository.save(verification);
     }
 }

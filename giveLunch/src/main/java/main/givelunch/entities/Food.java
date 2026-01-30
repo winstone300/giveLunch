@@ -46,23 +46,23 @@ public class Food {
     
     public static Food from(FoodDto foodDto){
         Food food = new Food();
-        food.id =  foodDto.getId();
-        food.name = foodDto.getName();
-        food.category = foodDto.getCategory();
-        food.imgUrl = foodDto.getImgUrl();
-        food.servingSizeG = foodDto.getServingSizeG();
+        food.id =  foodDto.id();
+        food.name = foodDto.name();
+        food.category = foodDto.category();
+        food.imgUrl = foodDto.imgUrl();
+        food.servingSizeG = foodDto.servingSizeG();
         return food;
     }
 
     public static Food from(FoodAndNutritionDto foodAndNutritionDto){
         Food food = new Food();
-        food.id = foodAndNutritionDto.getFoodId();
-        food.name = foodAndNutritionDto.getName();
-        food.category = foodAndNutritionDto.getCategory();
-        food.imgUrl = foodAndNutritionDto.getImgUrl();
-        food.servingSizeG = foodAndNutritionDto.getServingSizeG();
-        if(foodAndNutritionDto.getNutrition() != null){
-            Nutrition nutrition = Nutrition.from(foodAndNutritionDto.getNutrition());
+        food.id = foodAndNutritionDto.foodId();
+        food.name = foodAndNutritionDto.name();
+        food.category = foodAndNutritionDto.category();
+        food.imgUrl = foodAndNutritionDto.imgUrl();
+        food.servingSizeG = foodAndNutritionDto.servingSizeG();
+        if(foodAndNutritionDto.nutrition() != null){
+            Nutrition nutrition = Nutrition.from(foodAndNutritionDto.nutrition());
             food.setNutrition(nutrition);
         }
         return food;
@@ -71,12 +71,12 @@ public class Food {
     public void updateFood(FoodAndNutritionDto dto) {
         validateFoodData(dto);
 
-        this.name = dto.getName();
-        this.category = dto.getCategory();
-        this.imgUrl = dto.getImgUrl();
-        this.servingSizeG = dto.getServingSizeG();
+        this.name = dto.name();
+        this.category = dto.category();
+        this.imgUrl = dto.imgUrl();
+        this.servingSizeG = dto.servingSizeG();
 
-        updateNutritionIfPresent(dto.getNutrition());
+        updateNutritionIfPresent(dto.nutrition());
     }
 
     private void updateNutritionIfPresent(NutritionDto nutritionDto) {
@@ -94,7 +94,7 @@ public class Food {
     }
 
     private void validateFoodData(FoodAndNutritionDto dto) {
-        if (dto.getName() == null || dto.getName().isBlank()) {
+        if (dto.name() == null || dto.name().isBlank()) {
             throw new ValidationException(ErrorCode.INVALID_FOOD_NAME);
         }
     }

@@ -99,8 +99,8 @@ class DataGoKrFoodClientTest {
 
         // then
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getName()).isEqualTo("전주비빔밥");
-        assertThat(result.get(1).getName()).isEqualTo("참치비빔밥");
+        assertThat(result.get(0).name()).isEqualTo("전주비빔밥");
+        assertThat(result.get(1).name()).isEqualTo("참치비빔밥");
         mockServer.verify();
     }
 
@@ -135,8 +135,8 @@ class DataGoKrFoodClientTest {
 
         // then
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getName()).isEqualTo("전주비빔밥");
-        assertThat(result.get(1).getName()).isEqualTo("참치비빔밥");
+        assertThat(result.get(0).name()).isEqualTo("전주비빔밥");
+        assertThat(result.get(1).name()).isEqualTo("참치비빔밥");
         mockServer.verify();
     }
 
@@ -164,7 +164,7 @@ class DataGoKrFoodClientTest {
 
         // then
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getName()).isEqualTo("라면");
+        assertThat(result.get(0).name()).isEqualTo("라면");
         mockServer.verify();
     }
 

@@ -42,7 +42,7 @@ public class RouletteController {
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public void addMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        menuService.saveMenu(principal.getName(), menuDto.getMenuName());
+        menuService.saveMenu(principal.getName(), menuDto.menuName());
     }
 
     // 메뉴 삭제 API
@@ -51,7 +51,7 @@ public class RouletteController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @ResponseBody
     public void deleteMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        menuService.deleteMenu(principal.getName(), menuDto.getMenuName());
+        menuService.deleteMenu(principal.getName(), menuDto.menuName());
     }
 
 }
