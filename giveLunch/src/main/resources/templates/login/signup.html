@@ -3,6 +3,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
     <title>회원가입</title>
     <style>
         * { box-sizing: border-box; }
@@ -69,6 +71,26 @@
             margin-top: 10px;
             gap: 10px;
         }
+        .inline-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .inline-row input {
+            flex: 1;
+        }
+        .inline-row button {
+            width: auto;
+            margin: 0;
+            padding: 10px 12px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .verify-status {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6b7280;
+        }
 
         a { color: #2563eb; text-decoration: none; font-size: 13px; }
         a:hover { text-decoration: underline; }
@@ -124,8 +146,20 @@
                    placeholder="비밀번호를 다시 입력하세요" minlength="8" required />
 
             <label for="email">이메일</label>
-            <input id="email" name="email" type="email"
-                   placeholder="email@example.com" required/>
+            <div class="inline-row">
+                <input id="email" name="email" type="email"
+                       placeholder="email@example.com" required/>
+                <button type="button" id="sendVerification">인증번호 보내기</button>
+            </div>
+            <p class="hint">이메일로 발송된 인증번호를 입력해주세요.</p>
+
+            <label for="emailCode">이메일 인증번호</label>
+            <div class="inline-row">
+                <input id="emailCode" name="emailCode" type="text"
+                       placeholder="인증번호 6자리" maxlength="6" />
+                <button type="button" id="verifyEmail">인증하기</button>
+            </div>
+            <div class="verify-status" id="emailStatus"></div>
 
             <button type="submit">회원가입</button>
 
@@ -137,6 +171,58 @@
         </form>
     </div>
 </div>
+
+<script>
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+    const emailInput = document.getElementById('email');
+    const emailCodeInput = document.getElementById('emailCode');
+    const statusEl = document.getElementById('emailStatus');
+
+    const sendButton = document.getElementById('sendVerification');
+    const verifyButton = document.getElementById('verifyEmail');
+
+    const request = async (url, body) => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (csrfToken && csrfHeader) {
+            headers[csrfHeader] = csrfToken;
+        }
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || '요청에 실패했습니다.');
+        }
+        return data;
+    };
+
+    sendButton.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        statusEl.textContent = '';
+        try {
+            const data = await request('/signup/email/send', { email });
+            statusEl.textContent = data.message;
+        } catch (error) {
+            statusEl.textContent = error.message;
+        }
+    });
+
+    verifyButton.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        const code = emailCodeInput.value.trim();
+        statusEl.textContent = '';
+        try {
+            const data = await request('/signup/email/verify', { email, code });
+            statusEl.textContent = data.message;
+        } catch (error) {
+            statusEl.textContent = error.message;
+        }
+    });
+</script>
 
 </body>
 </html>
