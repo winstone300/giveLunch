@@ -10,6 +10,7 @@ import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -27,6 +28,8 @@ public class EmailVerificationService {
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    @Value("${spring.mail.username}")
+    private String mailUsername;
 
     @Transactional
     public void sendVerificationCode(String email) {
@@ -67,21 +70,9 @@ public class EmailVerificationService {
         verification.setVerified(true);
     }
 
-    @Transactional
-    public void deleteExpiredCodes(LocalDateTime now) {
-        emailVerificationRepository.deleteByExpiresAtBefore(now);
-    }
-
-    @Scheduled(cron = "0 0 3 * * *")
-    // 외부 클래스로 분리 고려중....
-    @Transactional
-    public void cleanupExpiredCodes() {
-        deleteExpiredCodes(LocalDateTime.now());
-    }
-
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom("winstone300");
+        message.setFrom(mailUsername);
         message.setTo(email);
         message.setSubject("GiveLunch 회원가입 이메일 인증번호");
         message.setText("회원가입을 위한 이메일 인증번호는 [" + code + "] 입니다. "
