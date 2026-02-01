@@ -229,6 +229,12 @@
         const input = menuInput;
         const menuName = input.value.trim();
         if (!menuName) return;
+        const normalizedName = menuName.toLowerCase();
+        const hasDuplicate = currentMenu.some(item => item.menuName.trim().toLowerCase() === normalizedName);
+        if (hasDuplicate) {
+            alert("이미 등록된 메뉴입니다.");
+            return;
+        }
         const resolvedFoodId = await resolveFoodId(menuName);
         const nextItem = { menuName, foodId: resolvedFoodId };
 
