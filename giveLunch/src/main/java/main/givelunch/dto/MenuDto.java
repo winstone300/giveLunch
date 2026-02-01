@@ -1,5 +1,5 @@
 package main.givelunch.dto;
 
 
-public record MenuDto(String userName, String menuName) {
+public record MenuDto(String menuName, Long foodId) {
 }

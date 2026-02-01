@@ -25,6 +25,15 @@
         input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; outline: none; }
         input:focus { border-color: var(--primary); }
         .add-btn { background: #55efc4; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .suggestions { margin-top: 8px; background: #fff; border: 1px solid #eee; border-radius: 10px; box-shadow: 0 8px 18px rgba(0,0,0,0.08); overflow: hidden; }
+        .suggestions.hidden { display: none; }
+        .suggestion-item { padding: 10px 12px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .suggestion-item:hover { background: #f8f9ff; }
+        .suggestion-meta { display: flex; flex-direction: column; gap: 2px; }
+        .suggestion-meta span { color: #636e72; font-size: 12px; }
+        .suggestion-thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: #f1f2f6; }
+        .suggestion-fallback { width: 36px; height: 36px; border-radius: 8px; background: #f1f2f6; display: flex;
+            align-items: center; justify-content: center; font-weight: 700; color: #636e72; }
 
         .main-grid {
             width: 100%;
@@ -95,6 +104,7 @@
         <input type="text" id="menu-input" placeholder="새 메뉴 추가" onkeypress="if(event.keyCode==13) addMenu()">
         <button class="add-btn" onclick="addMenu()">추가</button>
     </div>
+    <div id="menu-suggestions" class="suggestions hidden"></div>
 </div>
 
 <div class="main-grid">
@@ -127,25 +137,71 @@
     const resultDiv = document.getElementById('result');
     const nutritionContent = document.getElementById('nutrition-content');
     const nutritionImage = document.getElementById('nutrition-image');
+    const menuInput = document.getElementById('menu-input');
+    const suggestionsBox = document.getElementById('menu-suggestions');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
     let currentMenu = [[${menuList}]]; // 서버가 준 데이터 (로그인 시 DB값, 비로그인 시 기본값)
     let currentRotation = 0;
+    let selectedFoodId = null;
+
+    function normalizeMenuItems(items) {
+        return (items ?? []).map(item => {
+            if (typeof item === 'string') {
+                return { menuName: item, foodId: null };
+            }
+            return {
+                menuName: item.menuName ?? "",
+                foodId: item.foodId ?? null
+            };
+        });
+    }
+
+    currentMenu = normalizeMenuItems(currentMenu);
 
     // 게스트라면 LocalStorage 확인 후 덮어쓰기
     if (!isLoggedIn) {
         const localData = localStorage.getItem('guestMenu');
-        if (localData) currentMenu = JSON.parse(localData);
+        if (localData) currentMenu = normalizeMenuItems(JSON.parse(localData));
     }
 
     function renderMenuList() {
         const listDiv = document.getElementById('menu-list');
         listDiv.innerHTML = currentMenu.map((m, i) =>
             `<div class="menu-item">
-          ${m} <span class="del-btn" onclick="deleteMenu('${m}', ${i})">×</span>
+          ${m.menuName} <span class="del-btn" onclick="deleteMenu('${m.menuName}', ${i})">×</span>
        </div>`
         ).join('');
+    }
+
+    function clearSuggestions() {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.innerHTML = '';
+    }
+
+    function renderSuggestions(items) {
+        if (!items.length) {
+            clearSuggestions();
+            return;
+        }
+        suggestionsBox.innerHTML = items
+            .map(item => {
+                const name = item.name ?? "";
+                const imgUrl = item.imgUrl ?? "";
+                const thumb = imgUrl
+                    ? `<img class="suggestion-thumb" src="${imgUrl}" alt="${name}">`
+                    : `<div class="suggestion-fallback">${name ? name[0] : "?"}</div>`;
+                return `<div class="suggestion-item" data-value="${name}" data-food-id="${item.id ?? ""}">
+                    ${thumb}
+                    <div class="suggestion-meta">
+                        <div>${name}</div>
+                        <span>추천</span>
+                    </div>
+                </div>`;
+            })
+            .join('');
+        suggestionsBox.classList.remove('hidden');
     }
 
     function buildCsrfHeaders() {
@@ -154,11 +210,33 @@
         return token && headerName ? { [headerName]: token } : {};
     }
 
-    // 2. 메뉴 추가 (분기 처리)
+    // 2. 메뉴 추가 (foodId db에서 조회 후 연동)
+    async function resolveFoodId(menuName) {
+        if (selectedFoodId) return selectedFoodId;
+        try {
+            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
+            const idResp = await fetch(url);
+            if (!idResp.ok) return null;
+            const idData = await idResp.text();
+            const foodId = Number(idData);
+            return foodId || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     async function addMenu() {
-        const input = document.getElementById('menu-input');
+        const input = menuInput;
         const menuName = input.value.trim();
         if (!menuName) return;
+        const normalizedName = menuName.toLowerCase();
+        const hasDuplicate = currentMenu.some(item => item.menuName.trim().toLowerCase() === normalizedName);
+        if (hasDuplicate) {
+            alert("이미 등록된 메뉴입니다.");
+            return;
+        }
+        const resolvedFoodId = await resolveFoodId(menuName);
+        const nextItem = { menuName, foodId: resolvedFoodId };
 
         if (isLoggedIn) {
             // 회원: DB에 저장
@@ -166,19 +244,20 @@
                 const response = await fetch('/api/menus', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
-                    body: JSON.stringify({ menuName: menuName })
+                    body: JSON.stringify({ menuName: menuName, foodId: resolvedFoodId })
                 });
-                if (response.ok) currentMenu.push(menuName);
+                if (response.ok) currentMenu.push(nextItem);
                 else{ // 실패 처리(나중에)
                 }
             } catch (e) { alert("서버 저장 실패!"); return; }
         } else {
             // 게스트: LocalStorage에 저장
-            currentMenu.push(menuName);
+            currentMenu.push(nextItem);
             localStorage.setItem('guestMenu', JSON.stringify(currentMenu));
         }
 
         input.value = "";
+        selectedFoodId = null;
         updateGame();
     }
 
@@ -211,6 +290,45 @@
         drawWheel();
     }
 
+    let suggestTimer = null;
+    menuInput.addEventListener('input', () => {
+        selectedFoodId = null;
+        if (suggestTimer) clearTimeout(suggestTimer);
+        const query = menuInput.value.trim();
+        if (!query) {
+            clearSuggestions();
+            return;
+        }
+        suggestTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/menus/suggest?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    clearSuggestions();
+                    return;
+                }
+                const data = await response.json();
+                renderSuggestions(data);
+            } catch (e) {
+                clearSuggestions();
+            }
+        }, 250);
+    });
+
+    suggestionsBox.addEventListener('click', (event) => {
+        const target = event.target.closest('.suggestion-item');
+        if (!target) return;
+        menuInput.value = target.dataset.value;
+        const idValue = target.dataset.foodId;
+        selectedFoodId = idValue ? Number(idValue) : null;
+        clearSuggestions();
+        menuInput.focus();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (event.target === menuInput || suggestionsBox.contains(event.target)) return;
+        clearSuggestions();
+    });
+
     // 룰렛 그리기
     const colors = ["#6c5ce7", "#74b9ff", "#a29bfe", "#81ecec", "#55efc4", "#fab1a0", "#ff7675", "#fd79a8"];
     function drawWheel() {
@@ -232,7 +350,7 @@
             ctx.fillStyle = "white";
             ctx.font = "bold 15px Arial";
             ctx.textAlign = "center";
-            ctx.fillText(currentMenu[i], 0, 0);
+            ctx.fillText(currentMenu[i].menuName, 0, 0);
             ctx.restore();
         }
     }
@@ -287,21 +405,26 @@
     }
 
     // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
-    async function fetchAndRenderNutrition(menuName) {
+    async function fetchAndRenderNutrition(menuItem) {
+        const menuName = menuItem.menuName;
         renderNutritionLoading(menuName);
 
         try {
-            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
-            const idResp = await fetch(url);
-            if (!idResp.ok) {
-                const errorData = await idResp.json().catch(() => null);
-                const msg = errorData ? errorData.message : "알 수 없는 오류";
-                renderNutritionError(menuName, msg);
-                return;
-            }
+            let foodId = menuItem.foodId ?? null;
+            // menu에 id가 등록 안된 경우
+            if (!foodId) {
+                const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
+                const idResp = await fetch(url);
+                if (!idResp.ok) {
+                    const errorData = await idResp.json().catch(() => null);
+                    const msg = errorData ? errorData.message : "알 수 없는 오류";
+                    renderNutritionError(menuName, msg);
+                    return;
+                }
 
-            const idData = await idResp.text();
-            const foodId = Number(idData);
+                const idData = await idResp.text();
+                foodId = Number(idData);
+            }
             // 내부 db에 영양정보 없는 경우
             if (!foodId) {
                 // 비 로그인시 외부 api 호출 차단
@@ -352,9 +475,7 @@
         }
     }
 
-    // =========================
     // 룰렛 돌리기 -> 결과 -> 영양정보 조회
-    // =========================
     function spinWheel() {
         resultDiv.innerText = "운명의 메뉴는?";
         const randomExtra = Math.floor(Math.random() * 360);
@@ -364,12 +485,13 @@
         setTimeout(() => {
             const sliceDegree = 360 / currentMenu.length;
             const winnerIndex = Math.floor(((currentRotation % 360 + 270) % 360) / sliceDegree);
-            const winnerName = currentMenu[winnerIndex];
+            const winnerMenu = currentMenu[winnerIndex];
+            const winnerName = winnerMenu.menuName;
 
             resultDiv.innerText = `오늘의 메뉴: ${winnerName}!`;
 
             // ✅ 여기서 영양정보 API 호출
-            fetchAndRenderNutrition(winnerName);
+            fetchAndRenderNutrition(winnerMenu);
         }, 4000);
     }
 

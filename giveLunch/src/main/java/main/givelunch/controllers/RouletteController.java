@@ -1,15 +1,15 @@
 package main.givelunch.controllers;
 
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.transaction.Transactional;
 import java.security.Principal;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import main.givelunch.dto.FoodSuggestionDto;
 import main.givelunch.dto.MenuDto;
+import main.givelunch.services.roulette.FoodSearchService;
 import main.givelunch.services.roulette.MenuService;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,12 +23,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @RequiredArgsConstructor
 public class RouletteController {
     private final MenuService menuService;
+    private final FoodSearchService foodSearchService;
 
     @GetMapping({"/","/roulette"})
     public String roulette(Principal principal, Model model) {
         boolean isLoggedIn = (principal != null);
         String userName = isLoggedIn ? principal.getName() : "GUEST";
-        List<String> menuList = menuService.loadMenuToString(userName);
+        List<MenuDto> menuList = menuService.loadMenu(userName);
 
         model.addAttribute("menuList", menuList);
         model.addAttribute("userName", userName);
@@ -42,7 +43,7 @@ public class RouletteController {
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public void addMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        menuService.saveMenu(principal.getName(), menuDto.menuName());
+        menuService.saveMenu(principal.getName(), menuDto.menuName(), menuDto.foodId());
     }
 
     // 메뉴 삭제 API
@@ -54,4 +55,10 @@ public class RouletteController {
         menuService.deleteMenu(principal.getName(), menuDto.menuName());
     }
 
+    @Operation(summary = "메뉴 자동완성", description = "사용자 메뉴 목록에서 이름을 검색")
+    @GetMapping("/api/menus/suggest")
+    @ResponseBody
+    public List<FoodSuggestionDto> suggestFoods(@RequestParam("query") String query) {
+        return foodSearchService.suggestFoods(query);
+    }
 }
