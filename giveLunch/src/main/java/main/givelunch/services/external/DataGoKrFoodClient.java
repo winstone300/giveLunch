@@ -126,15 +126,31 @@ public class DataGoKrFoodClient {
         }
     }
 
+    private List<FoodAndNutritionDto> mapToDtos(List<JsonNode> items) {
+        List<FoodAndNutritionDto> results = new ArrayList<>();
+        java.util.Map<String, Optional<String>> imageCache = new java.util.HashMap<>();
+        for (JsonNode item : items) {
+            String foodName = normalizeFoodName(readFirstText(item, DataGoKrAPIField.FOODNAME.key()));
+            if (foodName == null) {
+                continue;
+            }
+            Optional<String> cachedImage = imageCache.computeIfAbsent(
+                    foodName,
+                    naverImageClient::fetchFirstImageUrl
+            );
+            mapToDto(item, foodName, cachedImage.orElse(null)).ifPresent(results::add);
+        }
+        return results;
+    }
+
+
     // 응답 값 dto에 mapping
-    private Optional<FoodAndNutritionDto> mapToDto(JsonNode itemNode) {
-        String foodName = readFirstText(itemNode, DataGoKrAPIField.FOODNAME.key());
+    private Optional<FoodAndNutritionDto> mapToDto(JsonNode itemNode, String foodName, String imgUrl) {
         if (foodName == null || foodName.isBlank()) {
             return Optional.empty();
         }
 
         String category = readFirstText(itemNode, DataGoKrAPIField.CATEGORY.key());
-        String imgUrl = naverImageClient.fetchFirstImageUrl(foodName).orElse(null);
         Integer servingSizeG = parseInteger(readFirstText(itemNode, DataGoKrAPIField.SERVINGSIZE.key()));
 
         BigDecimal calories = parseBigDecimal(readFirstText(itemNode, DataGoKrAPIField.CALORIES.key()));
@@ -158,12 +174,12 @@ public class DataGoKrFoodClient {
         ));
     }
 
-    private List<FoodAndNutritionDto> mapToDtos(List<JsonNode> items) {
-        List<FoodAndNutritionDto> results = new ArrayList<>();
-        for (JsonNode item : items) {
-            mapToDto(item).ifPresent(results::add);
+    private String normalizeFoodName(String foodName) {
+        if (foodName == null) {
+            return null;
         }
-        return results;
+        String trimmed = foodName.trim();
+        return trimmed.isBlank() ? null : trimmed;
     }
 
     // 키 값중 첫번째 값 반환
