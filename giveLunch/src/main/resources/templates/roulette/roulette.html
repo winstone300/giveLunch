@@ -144,18 +144,33 @@
     const isLoggedIn = [[${isLoggedIn}]];
     let currentMenu = [[${menuList}]]; // 서버가 준 데이터 (로그인 시 DB값, 비로그인 시 기본값)
     let currentRotation = 0;
+    let selectedFoodId = null;
+
+    function normalizeMenuItems(items) {
+        return (items ?? []).map(item => {
+            if (typeof item === 'string') {
+                return { menuName: item, foodId: null };
+            }
+            return {
+                menuName: item.menuName ?? "",
+                foodId: item.foodId ?? null
+            };
+        });
+    }
+
+    currentMenu = normalizeMenuItems(currentMenu);
 
     // 게스트라면 LocalStorage 확인 후 덮어쓰기
     if (!isLoggedIn) {
         const localData = localStorage.getItem('guestMenu');
-        if (localData) currentMenu = JSON.parse(localData);
+        if (localData) currentMenu = normalizeMenuItems(JSON.parse(localData));
     }
 
     function renderMenuList() {
         const listDiv = document.getElementById('menu-list');
         listDiv.innerHTML = currentMenu.map((m, i) =>
             `<div class="menu-item">
-          ${m} <span class="del-btn" onclick="deleteMenu('${m}', ${i})">×</span>
+          ${m.menuName} <span class="del-btn" onclick="deleteMenu('${m.menuName}', ${i})">×</span>
        </div>`
         ).join('');
     }
@@ -177,7 +192,7 @@
                 const thumb = imgUrl
                     ? `<img class="suggestion-thumb" src="${imgUrl}" alt="${name}">`
                     : `<div class="suggestion-fallback">${name ? name[0] : "?"}</div>`;
-                return `<div class="suggestion-item" data-value="${name}">
+                return `<div class="suggestion-item" data-value="${name}" data-food-id="${item.id ?? ""}">
                     ${thumb}
                     <div class="suggestion-meta">
                         <div>${name}</div>
@@ -195,11 +210,27 @@
         return token && headerName ? { [headerName]: token } : {};
     }
 
-    // 2. 메뉴 추가 (분기 처리)
+    // 2. 메뉴 추가 (foodId db에서 조회 후 연동)
+    async function resolveFoodId(menuName) {
+        if (selectedFoodId) return selectedFoodId;
+        try {
+            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
+            const idResp = await fetch(url);
+            if (!idResp.ok) return null;
+            const idData = await idResp.text();
+            const foodId = Number(idData);
+            return foodId || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     async function addMenu() {
         const input = menuInput;
         const menuName = input.value.trim();
         if (!menuName) return;
+        const resolvedFoodId = await resolveFoodId(menuName);
+        const nextItem = { menuName, foodId: resolvedFoodId };
 
         if (isLoggedIn) {
             // 회원: DB에 저장
@@ -207,20 +238,20 @@
                 const response = await fetch('/api/menus', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
-                    body: JSON.stringify({ menuName: menuName })
+                    body: JSON.stringify({ menuName: menuName, foodId: resolvedFoodId })
                 });
-                if (response.ok) currentMenu.push(menuName);
+                if (response.ok) currentMenu.push(nextItem);
                 else{ // 실패 처리(나중에)
                 }
             } catch (e) { alert("서버 저장 실패!"); return; }
         } else {
             // 게스트: LocalStorage에 저장
-            currentMenu.push(menuName);
+            currentMenu.push(nextItem);
             localStorage.setItem('guestMenu', JSON.stringify(currentMenu));
         }
 
         input.value = "";
-        clearSuggestions();
+        selectedFoodId = null;
         updateGame();
     }
 
@@ -255,6 +286,7 @@
 
     let suggestTimer = null;
     menuInput.addEventListener('input', () => {
+        selectedFoodId = null;
         if (suggestTimer) clearTimeout(suggestTimer);
         const query = menuInput.value.trim();
         if (!query) {
@@ -280,6 +312,8 @@
         const target = event.target.closest('.suggestion-item');
         if (!target) return;
         menuInput.value = target.dataset.value;
+        const idValue = target.dataset.foodId;
+        selectedFoodId = idValue ? Number(idValue) : null;
         clearSuggestions();
         menuInput.focus();
     });
@@ -310,7 +344,7 @@
             ctx.fillStyle = "white";
             ctx.font = "bold 15px Arial";
             ctx.textAlign = "center";
-            ctx.fillText(currentMenu[i], 0, 0);
+            ctx.fillText(currentMenu[i].menuName, 0, 0);
             ctx.restore();
         }
     }
@@ -365,21 +399,26 @@
     }
 
     // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
-    async function fetchAndRenderNutrition(menuName) {
+    async function fetchAndRenderNutrition(menuItem) {
+        const menuName = menuItem.menuName;
         renderNutritionLoading(menuName);
 
         try {
-            const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
-            const idResp = await fetch(url);
-            if (!idResp.ok) {
-                const errorData = await idResp.json().catch(() => null);
-                const msg = errorData ? errorData.message : "알 수 없는 오류";
-                renderNutritionError(menuName, msg);
-                return;
-            }
+            let foodId = menuItem.foodId ?? null;
+            // menu에 id가 등록 안된 경우
+            if (!foodId) {
+                const url = `/api/foods/search?name=${encodeURIComponent(menuName)}`;
+                const idResp = await fetch(url);
+                if (!idResp.ok) {
+                    const errorData = await idResp.json().catch(() => null);
+                    const msg = errorData ? errorData.message : "알 수 없는 오류";
+                    renderNutritionError(menuName, msg);
+                    return;
+                }
 
-            const idData = await idResp.text();
-            const foodId = Number(idData);
+                const idData = await idResp.text();
+                foodId = Number(idData);
+            }
             // 내부 db에 영양정보 없는 경우
             if (!foodId) {
                 // 비 로그인시 외부 api 호출 차단
@@ -430,9 +469,7 @@
         }
     }
 
-    // =========================
     // 룰렛 돌리기 -> 결과 -> 영양정보 조회
-    // =========================
     function spinWheel() {
         resultDiv.innerText = "운명의 메뉴는?";
         const randomExtra = Math.floor(Math.random() * 360);
@@ -442,12 +479,13 @@
         setTimeout(() => {
             const sliceDegree = 360 / currentMenu.length;
             const winnerIndex = Math.floor(((currentRotation % 360 + 270) % 360) / sliceDegree);
-            const winnerName = currentMenu[winnerIndex];
+            const winnerMenu = currentMenu[winnerIndex];
+            const winnerName = winnerMenu.menuName;
 
             resultDiv.innerText = `오늘의 메뉴: ${winnerName}!`;
 
             // ✅ 여기서 영양정보 API 호출
-            fetchAndRenderNutrition(winnerName);
+            fetchAndRenderNutrition(winnerMenu);
         }, 4000);
     }
 

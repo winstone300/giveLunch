@@ -29,7 +29,7 @@ public class RouletteController {
     public String roulette(Principal principal, Model model) {
         boolean isLoggedIn = (principal != null);
         String userName = isLoggedIn ? principal.getName() : "GUEST";
-        List<String> menuList = menuService.loadMenuToString(userName);
+        List<MenuDto> menuList = menuService.loadMenu(userName);
 
         model.addAttribute("menuList", menuList);
         model.addAttribute("userName", userName);
@@ -43,7 +43,7 @@ public class RouletteController {
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public void addMenu(@RequestBody MenuDto menuDto, Principal principal) {
-        menuService.saveMenu(principal.getName(), menuDto.menuName());
+        menuService.saveMenu(principal.getName(), menuDto.menuName(), menuDto.foodId());
     }
 
     // 메뉴 삭제 API
