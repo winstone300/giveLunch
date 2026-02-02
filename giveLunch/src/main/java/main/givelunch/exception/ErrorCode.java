@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ErrorCode {
     FOOD_NOT_FOUND(HttpStatus.NOT_FOUND, "FOOD_NOT_FOUND", "해당 음식을 찾을 수 없습니다."),
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "요청 값이 올바르지 않습니다."),
     INVALID_FOOD_NAME(HttpStatus.BAD_REQUEST, "INVALID_FOOD_NAME", "음식 이름은 필수입니다."),
     INVALID_USERNAME(HttpStatus.BAD_REQUEST, "INVALID_USERNAME", "아이디를 입력해주세요."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호를 입력해주세요."),
