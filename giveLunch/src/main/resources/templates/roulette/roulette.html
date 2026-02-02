@@ -54,6 +54,9 @@
         #canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.1, 0, 0, 1); }
         .arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid var(--accent); z-index: 10; }
 
+        .spin-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .spin-result-actions { display: flex; gap: 12px; }
+        .spin-result-actions.is-hidden { display: none; }
         .spin-btn { padding: 16px 60px; font-size: 18px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3); }
         #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; text-align: center;}
 
@@ -73,6 +76,7 @@
         .nutrition-row:last-child { border-bottom: none; }
         .nutrition-image { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
         .nutrition-image.is-hidden { display: none; }
+        .is-hidden { display: none; }
         .muted { color: #636e72; font-size: 13px; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f2f6; font-size: 12px; font-weight: 700; margin-top: 8px; }
         .err { color: #d63031; font-size: 13px; margin-top: 8px; white-space: pre-line; }
@@ -115,7 +119,13 @@
             <canvas id="canvas" width="400" height="400"></canvas>
         </div>
 
-        <button class="spin-btn" onclick="spinWheel()">룰렛 돌리기!</button>
+        <div class="spin-actions">
+            <button class="spin-btn" id="spin-button" onclick="spinWheel()">룰렛 돌리기!</button>
+            <div class="spin-result-actions is-hidden" id="spin-result-actions">
+                <button class="spin-btn" type="button" onclick="spinWheel()">다시 돌리기</button>
+                <button class="spin-btn" type="button">냠</button>
+            </div>
+        </div>
         <div id="result"></div>
     </div>
 
@@ -139,12 +149,16 @@
     const nutritionImage = document.getElementById('nutrition-image');
     const menuInput = document.getElementById('menu-input');
     const suggestionsBox = document.getElementById('menu-suggestions');
+    const spinButton = document.getElementById('spin-button');
+    const spinResultActions = document.getElementById('spin-result-actions');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
     let currentMenu = [[${menuList}]]; // 서버가 준 데이터 (로그인 시 DB값, 비로그인 시 기본값)
     let currentRotation = 0;
     let selectedFoodId = null;
+    let spinTimeoutId = null;
+    let spinRequestId = 0;
 
     function normalizeMenuItems(items) {
         return (items ?? []).map(item => {
@@ -355,6 +369,16 @@
         }
     }
 
+    function showSpinResultActions() {
+        if (spinButton) spinButton.classList.add('is-hidden');
+        if (spinResultActions) spinResultActions.classList.remove('is-hidden');
+    }
+
+    function showSpinButton() {
+        if (spinButton) spinButton.classList.remove('is-hidden');
+        if (spinResultActions) spinResultActions.classList.add('is-hidden');
+    }
+
     // =========================
     // 영양정보 렌더링
     // =========================
@@ -477,12 +501,20 @@
 
     // 룰렛 돌리기 -> 결과 -> 영양정보 조회
     function spinWheel() {
+        spinRequestId += 1;
+        const requestId = spinRequestId;
+        if (spinTimeoutId) {
+            clearTimeout(spinTimeoutId);
+        }
         resultDiv.innerText = "운명의 메뉴는?";
         const randomExtra = Math.floor(Math.random() * 360);
         currentRotation += (1800 + randomExtra);
         canvas.style.transform = `rotate(-${currentRotation}deg)`;
 
-        setTimeout(() => {
+        spinTimeoutId = setTimeout(() => {
+            if (requestId !== spinRequestId) {
+                return;
+            }
             const sliceDegree = 360 / currentMenu.length;
             const winnerIndex = Math.floor(((currentRotation % 360 + 270) % 360) / sliceDegree);
             const winnerMenu = currentMenu[winnerIndex];
@@ -490,6 +522,7 @@
 
             resultDiv.innerText = `오늘의 메뉴: ${winnerName}!`;
 
+            showSpinResultActions();
             // ✅ 여기서 영양정보 API 호출
             fetchAndRenderNutrition(winnerMenu);
         }, 4000);
