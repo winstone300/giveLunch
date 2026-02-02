@@ -50,7 +50,7 @@ public class FoodSearchService {
     }
 
     public List<FoodSuggestionDto> suggestFoods(String name) {
-        if (name == null || name.isBlank()) {
+        if (foodNameValidator.isValid(name)) {
             return List.of();
         }
         return foodRepository

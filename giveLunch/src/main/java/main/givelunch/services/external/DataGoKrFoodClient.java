@@ -2,6 +2,7 @@ package main.givelunch.services.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.cache.annotation.Cacheable;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import main.givelunch.config.CacheConfig;
 import main.givelunch.dto.FoodAndNutritionDto;
 import main.givelunch.dto.NutritionDto;
 import main.givelunch.properties.DataGoKrProperties;
@@ -52,6 +54,11 @@ public class DataGoKrFoodClient {
         return fetchFoodsByName(name, properties.numOfRowsAdmin());
     }
 
+    @Cacheable(
+            cacheNames = CacheConfig.EXTERNAL_FOOD_SEARCH_CACHE,
+            key = "'food:' + #numOfRows + ':' + #name.trim().toLowerCase()",
+            condition = "#name != null && !#name.trim().isEmpty()"
+    )
     public List<FoodAndNutritionDto> fetchFoodsByName(String name,int numOfRows) {
         URI uri = buildUri(name,numOfRows);
         return fetchBody(uri, name)

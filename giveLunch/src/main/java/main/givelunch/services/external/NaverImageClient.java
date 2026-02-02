@@ -2,18 +2,15 @@ package main.givelunch.services.external;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.cache.annotation.Cacheable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import main.givelunch.config.CacheConfig;
 import main.givelunch.properties.NaverImageProperties;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -38,6 +35,11 @@ public class NaverImageClient {
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
 
+    @Cacheable(
+            cacheNames = CacheConfig.NAVER_IMAGE_CACHE,
+            key = "'naver:' + #query.trim().toLowerCase()",
+            condition = "#query != null && !#query.trim().isEmpty()"
+    )
     public Optional<String> fetchFirstImageUrl(String query) {
         if (query == null || query.isBlank()) {
             return Optional.empty();
