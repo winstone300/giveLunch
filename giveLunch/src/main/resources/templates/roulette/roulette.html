@@ -11,10 +11,22 @@
         :root { --primary: #6c5ce7; --secondary: #a29bfe; --accent: #ff7675; --bg: #f0f3f7; }
         body { font-family: 'Pretendard', sans-serif; display: flex; flex-direction: column; align-items: center; background-color: var(--bg); margin: 0; padding: 20px; }
 
-        .header { width: 100%; max-width: 820px; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .header { width: 100%; max-width: 820px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 15px 20px; background: white; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; gap: 12px; }
+        .header-left { justify-self: start; }
+        .header-center { justify-self: center; font-weight: 700; color: #2d3436; display: flex; align-items: center; gap: 6px; }
+        .header-right { justify-self: end; display: flex; align-items: center; gap: 8px; }
         .auth-btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; font-size: 14px; }
         .login-btn { background: var(--primary); color: white; }
         .logout-btn { background: #dfe6e9; color: #636e72; }
+        .rank-container { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .rank-preview { font-weight: 700; color: #2d3436; display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: #f1f2f6; }
+        .rank-preview .rank-name { font-weight: 700; }
+        .rank-preview .rank-score { color: var(--primary); font-weight: 800; }
+        .rank-list { display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: #ffffff; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); padding: 10px 12px; min-width: 210px; z-index: 20; }
+        .rank-container:hover .rank-list { display: block; }
+        .rank-list ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .rank-item { display: flex; justify-content: space-between; font-size: 13px; color: #2d3436; }
+        .rank-item .rank-score { font-weight: 700; color: var(--primary); }
 
         .menu-card { width: 100%; max-width: 820px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
         .menu-title { font-size: 16px; font-weight: 700; margin-bottom: 15px; display: block; }
@@ -54,7 +66,12 @@
         #canvas { width: 100%; height: 100%; border-radius: 50%; transition: transform 4s cubic-bezier(0.1, 0, 0, 1); }
         .arrow { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid var(--accent); z-index: 10; }
 
+        .spin-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .spin-result-actions { display: flex; gap: 12px; }
+        .spin-result-actions.is-hidden { display: none; }
         .spin-btn { padding: 16px 60px; font-size: 18px; font-weight: bold; color: white; background: var(--primary); border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3); }
+        .spin-btn.retry { background: #0f1b81; box-shadow: 0 6px 20px rgba(99, 110, 114, 0.3); }
+        .spin-btn.eat { background: #55efc4; color: #2d3436; box-shadow: 0 6px 20px rgba(85, 239, 196, 0.3); }
         #result { margin-top: 25px; font-size: 24px; font-weight: 800; color: #2d3436; min-height: 1.5em; text-align: center;}
 
         .nutrition-card {
@@ -73,6 +90,7 @@
         .nutrition-row:last-child { border-bottom: none; }
         .nutrition-image { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
         .nutrition-image.is-hidden { display: none; }
+        .is-hidden { display: none; }
         .muted { color: #636e72; font-size: 13px; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #f1f2f6; font-size: 12px; font-weight: 700; margin-top: 8px; }
         .err { color: #d63031; font-size: 13px; margin-top: 8px; white-space: pre-line; }
@@ -88,12 +106,18 @@
 <body>
 
 <div class="header">
-    <div id="status-text"
+    <div class="header-left" id="status-text"
          th:text="${isLoggedIn} ? '👤 회원 모드 (' + ${userName} + '님)' : '👋 반갑습니다! (GUEST)'">상태</div>
-    <a th:if="${!isLoggedIn}" th:href="@{/login}" class="auth-btn login-btn">로그인</a>
-    <form th:if="${isLoggedIn}" th:action="@{/logout}" method="post">
-        <button type="submit" class="auth-btn logout-btn">로그아웃</button>
-    </form>
+    <div class="header-center rank-container" id="rank-display">
+        <div class="rank-preview" id="rank-preview">🏆 랭킹 준비중...</div>
+        <div class="rank-list" id="rank-list"></div>
+    </div>
+    <div class="header-right">
+        <a th:if="${!isLoggedIn}" th:href="@{/login}" class="auth-btn login-btn">로그인</a>
+        <form th:if="${isLoggedIn}" th:action="@{/logout}" method="post">
+            <button type="submit" class="auth-btn logout-btn">로그아웃</button>
+        </form>
+    </div>
 </div>
 
 <div class="menu-card">
@@ -115,7 +139,13 @@
             <canvas id="canvas" width="400" height="400"></canvas>
         </div>
 
-        <button class="spin-btn" onclick="spinWheel()">룰렛 돌리기!</button>
+        <div class="spin-actions">
+            <button class="spin-btn" id="spin-button" onclick="spinWheel()">룰렛 돌리기!</button>
+            <div class="spin-result-actions is-hidden" id="spin-result-actions">
+                <button class="spin-btn retry" type="button" onclick="spinWheel()">다시 돌리기</button>
+                <button class="spin-btn eat" id="eat-button" type="button" onclick="recordRank()">냠</button>
+            </div>
+        </div>
         <div id="result"></div>
     </div>
 
@@ -139,12 +169,114 @@
     const nutritionImage = document.getElementById('nutrition-image');
     const menuInput = document.getElementById('menu-input');
     const suggestionsBox = document.getElementById('menu-suggestions');
+    const spinButton = document.getElementById('spin-button');
+    const spinResultActions = document.getElementById('spin-result-actions');
+    const rankPreview = document.getElementById('rank-preview');
+    const rankList = document.getElementById('rank-list');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
     let currentMenu = [[${menuList}]]; // 서버가 준 데이터 (로그인 시 DB값, 비로그인 시 기본값)
     let currentRotation = 0;
     let selectedFoodId = null;
+    let spinTimeoutId = null;
+    let spinRequestId = 0;
+    let lastWinnerName = null;
+    let rankRotateTimer = null;     // 랭킹 미리보기(1줄) 업데이트 타이머
+    const rankRotateTime = 2500;
+    let rankRotateIndex = 0;
+    let rankCache = [];
+    let rankRetryTimer = null;
+    const rankRetryDelay = 7000;
+    let rankRefreshing = false;     // 이미 새로고침 중일 수 있음(네트워크 이슈로)
+
+    function scheduleRankRetry() {
+        if (rankRetryTimer) return;
+        rankRetryTimer = setTimeout(async () => {
+            rankRetryTimer = null;
+            await refreshRankList();
+        }, rankRetryDelay);
+    }
+
+    async function refreshRankList() {
+        if (rankRefreshing) return;
+        rankRefreshing = true;
+        try {
+            const response = await fetch('/api/ranks/top?limit=5');
+            if (!response.ok) {
+                rankCache = [];
+                renderRankDisplay(false);
+                return;
+            }
+            const data = await response.json();
+            rankCache = Array.isArray(data) ? data : [];
+            if (!rankCache.length) {
+                rankRotateIndex = 0;
+                scheduleRankRetry();
+            } else {
+                const displayLength = Math.min(rankCache.length, 5);
+                rankRotateIndex %= displayLength;
+                if (rankRetryTimer) {
+                    clearTimeout(rankRetryTimer);
+                    rankRetryTimer = null;
+                }
+            }
+        } catch (e) {
+            rankCache = [];
+            rankRotateIndex = 0;
+            scheduleRankRetry();
+        }finally {
+            rankRefreshing = false;
+        }
+    }
+
+    function renderRankDisplay(shouldAdvance = true) {
+        const ranks = rankCache;
+        if (!rankPreview || !rankList) return;
+        if (!ranks.length) {
+            rankPreview.textContent = '🏆 랭킹 없음';
+            rankList.innerHTML = '<div class="muted">랭킹 데이터가 없습니다.</div>';
+            scheduleRankRetry();
+            return;
+        }
+        const displayRanks = ranks.slice(0, 5);
+        const displayLength = displayRanks.length;
+        if (!displayLength) {
+            rankPreview.textContent = '🏆 랭킹 없음';
+            rankList.innerHTML = '<div class="muted">랭킹 데이터가 없습니다.</div>';
+            return;
+        }
+
+        const safeIndex = rankRotateIndex % displayLength;
+        const currentRank = displayRanks[safeIndex];
+        rankPreview.innerHTML = `🏆 ${safeIndex + 1}위 <span class="rank-name">${currentRank.name}</span>
+<span class="rank-score">${currentRank.count}건</span>`;
+
+        const entries = displayRanks.map((item, index) => `
+            <li class="rank-item">
+                <span>${index + 1}위 ${item.name}</span>
+                <span class="rank-score">${item.count}건</span>
+            </li>
+        `).join('');
+        rankList.innerHTML = `<ul>${entries}</ul>`;
+
+        if (shouldAdvance) {
+            const nextIndex = (safeIndex + 1) % displayLength;
+            rankRotateIndex = nextIndex;
+            if (nextIndex === 0) {
+                refreshRankList();
+            }
+        }
+    }
+
+    async function initRankRotation() {
+        await refreshRankList();
+        if (rankRotateTimer) {
+            clearInterval(rankRotateTimer);
+        }
+        renderRankDisplay(false);
+        rankRotateTimer = setInterval(() => renderRankDisplay(true), rankRotateTime);
+    }
 
     function normalizeMenuItems(items) {
         return (items ?? []).map(item => {
@@ -355,6 +487,16 @@
         }
     }
 
+    function showSpinResultActions() {
+        if (spinButton) spinButton.classList.add('is-hidden');
+        if (spinResultActions) spinResultActions.classList.remove('is-hidden');
+    }
+
+    function showSpinButton() {
+        if (spinButton) spinButton.classList.remove('is-hidden');
+        if (spinResultActions) spinResultActions.classList.add('is-hidden');
+    }
+
     // =========================
     // 영양정보 렌더링
     // =========================
@@ -402,6 +544,27 @@
 
       <div class="badge">SOURCE: ${source}</div>
     `;
+    }
+
+    function recordRank() {
+        if (!lastWinnerName) {
+            return;
+        }
+        const normalizedName = lastWinnerName.trim();
+        if (!normalizedName) {
+            return;
+        }
+        fetch('/api/ranks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
+            body: JSON.stringify({ name: normalizedName })
+        })
+            .then(() => {
+                showSpinButton();
+            })
+            .catch(() => {
+                showSpinButton();
+            });
     }
 
     // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
@@ -477,25 +640,36 @@
 
     // 룰렛 돌리기 -> 결과 -> 영양정보 조회
     function spinWheel() {
+        spinRequestId += 1;
+        const requestId = spinRequestId;
+        if (spinTimeoutId) {
+            clearTimeout(spinTimeoutId);
+        }
         resultDiv.innerText = "운명의 메뉴는?";
         const randomExtra = Math.floor(Math.random() * 360);
         currentRotation += (1800 + randomExtra);
         canvas.style.transform = `rotate(-${currentRotation}deg)`;
 
-        setTimeout(() => {
+        spinTimeoutId = setTimeout(() => {
+            if (requestId !== spinRequestId) {
+                return;
+            }
             const sliceDegree = 360 / currentMenu.length;
             const winnerIndex = Math.floor(((currentRotation % 360 + 270) % 360) / sliceDegree);
             const winnerMenu = currentMenu[winnerIndex];
             const winnerName = winnerMenu.menuName;
+            lastWinnerName = winnerName;
 
             resultDiv.innerText = `오늘의 메뉴: ${winnerName}!`;
 
+            showSpinResultActions();
             // ✅ 여기서 영양정보 API 호출
             fetchAndRenderNutrition(winnerMenu);
         }, 4000);
     }
 
     updateGame();
+    initRankRotation();
 </script>
 
 </body>
