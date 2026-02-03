@@ -184,12 +184,23 @@
     let lastWinnerName = null;
     let rankRotateTimer = null;     // 랭킹 미리보기(1줄) 업데이트 타이머
     const rankRotateTime = 2500;
-    let rankRefreshTimer = null;    // 서버 랭킹 갱신 타이머
-    const rankRefreshTime = 8000;
     let rankRotateIndex = 0;
     let rankCache = [];
+    let rankRetryTimer = null;
+    const rankRetryDelay = 7000;
+    let rankRefreshing = false;     // 이미 새로고침 중일 수 있음(네트워크 이슈로)
+
+    function scheduleRankRetry() {
+        if (rankRetryTimer) return;
+        rankRetryTimer = setTimeout(async () => {
+            rankRetryTimer = null;
+            await refreshRankList();
+        }, rankRetryDelay);
+    }
 
     async function refreshRankList() {
+        if (rankRefreshing) return;
+        rankRefreshing = true;
         try {
             const response = await fetch('/api/ranks/top?limit=5');
             if (!response.ok) {
@@ -198,19 +209,24 @@
                 return;
             }
             const data = await response.json();
-            const nextCache = Array.isArray(data) ? data : [];
-            rankCache = nextCache;
+            rankCache = Array.isArray(data) ? data : [];
             if (!rankCache.length) {
                 rankRotateIndex = 0;
+                scheduleRankRetry();
             } else {
                 const displayLength = Math.min(rankCache.length, 5);
                 rankRotateIndex %= displayLength;
+                if (rankRetryTimer) {
+                    clearTimeout(rankRetryTimer);
+                    rankRetryTimer = null;
+                }
             }
-            renderRankDisplay(false);
         } catch (e) {
             rankCache = [];
             rankRotateIndex = 0;
-            renderRankDisplay(false);
+            scheduleRankRetry();
+        }finally {
+            rankRefreshing = false;
         }
     }
 
@@ -220,6 +236,7 @@
         if (!ranks.length) {
             rankPreview.textContent = '🏆 랭킹 없음';
             rankList.innerHTML = '<div class="muted">랭킹 데이터가 없습니다.</div>';
+            scheduleRankRetry();
             return;
         }
         const displayRanks = ranks.slice(0, 5);
@@ -244,7 +261,11 @@
         rankList.innerHTML = `<ul>${entries}</ul>`;
 
         if (shouldAdvance) {
-            rankRotateIndex = (safeIndex + 1) % displayLength;
+            const nextIndex = (safeIndex + 1) % displayLength;
+            rankRotateIndex = nextIndex;
+            if (nextIndex === 0) {
+                refreshRankList();
+            }
         }
     }
 
@@ -253,12 +274,8 @@
         if (rankRotateTimer) {
             clearInterval(rankRotateTimer);
         }
-        if (rankRefreshTimer) {
-            clearInterval(rankRefreshTimer);
-        }
         renderRankDisplay(false);
         rankRotateTimer = setInterval(() => renderRankDisplay(true), rankRotateTime);
-        rankRefreshTimer = setInterval(refreshRankList, rankRefreshTime);
     }
 
     function normalizeMenuItems(items) {
