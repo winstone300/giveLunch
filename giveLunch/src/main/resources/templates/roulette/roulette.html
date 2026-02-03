@@ -182,8 +182,11 @@
     let spinTimeoutId = null;
     let spinRequestId = 0;
     let lastWinnerName = null;
-
-    let rankRotateTimer = null;
+    let rankRotateTimer = null;     // 랭킹 미리보기(1줄) 업데이트 타이머
+    const rankRotateTime = 2500;
+    let rankRefreshTimer = null;    // 서버 랭킹 갱신 타이머
+    const rankRefreshTime = 8000;
+    let rankRotateIndex = 0;
     let rankCache = [];
 
     async function refreshRankList() {
@@ -191,18 +194,27 @@
             const response = await fetch('/api/ranks/top?limit=5');
             if (!response.ok) {
                 rankCache = [];
+                renderRankDisplay(false);
                 return;
             }
             const data = await response.json();
-            rankCache = Array.isArray(data) ? data : [];
-            renderRankDisplay();
+            const nextCache = Array.isArray(data) ? data : [];
+            rankCache = nextCache;
+            if (!rankCache.length) {
+                rankRotateIndex = 0;
+            } else {
+                const displayLength = Math.min(rankCache.length, 5);
+                rankRotateIndex %= displayLength;
+            }
+            renderRankDisplay(false);
         } catch (e) {
             rankCache = [];
-            renderRankDisplay();
+            rankRotateIndex = 0;
+            renderRankDisplay(false);
         }
     }
 
-    function renderRankDisplay() {
+    function renderRankDisplay(shouldAdvance = true) {
         const ranks = rankCache;
         if (!rankPreview || !rankList) return;
         if (!ranks.length) {
@@ -210,15 +222,30 @@
             rankList.innerHTML = '<div class="muted">랭킹 데이터가 없습니다.</div>';
             return;
         }
-        const top = ranks[0];
-        rankPreview.innerHTML = `🏆 1위 <span class="rank-name">${top.name}</span> <span class="rank-score">${top.count}건</span>`;
-        const entries = ranks.map((item, index) => `
+        const displayRanks = ranks.slice(0, 5);
+        const displayLength = displayRanks.length;
+        if (!displayLength) {
+            rankPreview.textContent = '🏆 랭킹 없음';
+            rankList.innerHTML = '<div class="muted">랭킹 데이터가 없습니다.</div>';
+            return;
+        }
+
+        const safeIndex = rankRotateIndex % displayLength;
+        const currentRank = displayRanks[safeIndex];
+        rankPreview.innerHTML = `🏆 ${safeIndex + 1}위 <span class="rank-name">${currentRank.name}</span>
+<span class="rank-score">${currentRank.count}건</span>`;
+
+        const entries = displayRanks.map((item, index) => `
             <li class="rank-item">
                 <span>${index + 1}위 ${item.name}</span>
                 <span class="rank-score">${item.count}건</span>
             </li>
         `).join('');
         rankList.innerHTML = `<ul>${entries}</ul>`;
+
+        if (shouldAdvance) {
+            rankRotateIndex = (safeIndex + 1) % displayLength;
+        }
     }
 
     async function initRankRotation() {
@@ -226,7 +253,12 @@
         if (rankRotateTimer) {
             clearInterval(rankRotateTimer);
         }
-        rankRotateTimer = setInterval(refreshRankList, 5000);
+        if (rankRefreshTimer) {
+            clearInterval(rankRefreshTimer);
+        }
+        renderRankDisplay(false);
+        rankRotateTimer = setInterval(() => renderRankDisplay(true), rankRotateTime);
+        rankRefreshTimer = setInterval(refreshRankList, rankRefreshTime);
     }
 
     function normalizeMenuItems(items) {
@@ -510,7 +542,6 @@
             headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
             body: JSON.stringify({ name: normalizedName })
         })
-            .then(() => refreshRankList())
             .then(() => {
                 showSpinButton();
             })
