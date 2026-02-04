@@ -15,11 +15,11 @@ public class ViewExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ModelAndView handleValidationException(ValidationException e, HttpServletRequest request) {
-        String path = request.getServletPath();
-        if ("/signup".equals(path)) {
+        String path = normalizePath(request);
+        if (path.endsWith("/signup")) {
             return buildView("login/signup", e.getMessage());
         }
-        if ("/forgot-password".equals(path)) {
+        if (path.endsWith("/forgot-password")) {
             String message = e.getMessage();
             ErrorCode code = e.getErrorCode();
             if (EnumSet.of(ErrorCode.USER_NOT_FOUND, ErrorCode.INVALID_EMAIL, ErrorCode.INVALID_USERNAME).contains(code)) {
@@ -27,7 +27,7 @@ public class ViewExceptionHandler {
             }
             return buildView("login/forgotPassword", message);
         }
-        if ("/reset-password".equals(path)) {
+        if (path.endsWith("/reset-password")) {
             return buildView("login/resetPassword", e.getMessage());
         }
         return buildView("login/login", e.getMessage());
@@ -37,5 +37,18 @@ public class ViewExceptionHandler {
         ModelAndView modelAndView = new ModelAndView(viewName);
         modelAndView.addObject("error", message);
         return modelAndView;
+    }
+
+    private String normalizePath(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if ("/".equals(path)) {
+            return "/";
+        }
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+
+        path = path.replaceAll("/+$", "");
+        return path;
     }
 }

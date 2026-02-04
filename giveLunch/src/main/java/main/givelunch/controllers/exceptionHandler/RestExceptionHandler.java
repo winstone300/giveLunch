@@ -10,12 +10,13 @@ import main.givelunch.exception.ValidationException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
-@RestControllerAdvice
+@RestControllerAdvice(annotations = RestController.class)
 public class RestExceptionHandler {
     // Food data가 없을 때
     @ExceptionHandler(FoodNotFoundException.class)
