@@ -1,8 +1,8 @@
 package main.givelunch.entities;
 
 import jakarta.persistence.EntityManager;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.repositories.FoodRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

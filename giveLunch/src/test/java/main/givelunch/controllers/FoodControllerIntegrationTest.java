@@ -10,11 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.entities.Food;
-import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;

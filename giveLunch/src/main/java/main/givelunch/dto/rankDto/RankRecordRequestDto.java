@@ -1,4 +1,4 @@
-package main.givelunch.dto;
+package main.givelunch.dto.rankDto;
 
 import jakarta.validation.constraints.NotNull;
 

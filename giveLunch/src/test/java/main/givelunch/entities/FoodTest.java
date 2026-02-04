@@ -1,8 +1,8 @@
 package main.givelunch.entities;
 
 import java.math.BigDecimal;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import org.junit.jupiter.api.DisplayName;

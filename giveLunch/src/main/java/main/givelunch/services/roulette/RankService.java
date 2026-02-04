@@ -2,7 +2,7 @@ package main.givelunch.services.roulette;
 
 import java.util.List;
 import java.util.Set;
-import main.givelunch.dto.RankEntryDto;
+import main.givelunch.dto.rankDto.RankEntryDto;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;

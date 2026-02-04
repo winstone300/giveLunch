@@ -9,9 +9,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.FoodDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 

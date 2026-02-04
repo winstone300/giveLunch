@@ -11,6 +11,7 @@ import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
+import main.givelunch.services.login.EmailVerificationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,9 +1,8 @@
 package main.givelunch.services.roulette;
 
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.exception.FoodNotFoundException;

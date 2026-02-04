@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import main.givelunch.dto.FoodSuggestionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
 import main.givelunch.services.roulette.FoodSearchService;
 import main.givelunch.services.roulette.MenuService;
 import org.hamcrest.Matchers;

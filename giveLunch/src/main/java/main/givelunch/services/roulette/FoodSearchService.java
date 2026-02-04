@@ -3,15 +3,12 @@ package main.givelunch.services.roulette;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.FoodSuggestionDto;
-import main.givelunch.entities.Food;
-import main.givelunch.entities.Nutrition;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
 import main.givelunch.properties.DataGoKrProperties;
 import main.givelunch.repositories.FoodRepository;
-import main.givelunch.repositories.NutritionRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
-import main.givelunch.validators.FoodNameValidator;
+import main.givelunch.validators.NameValidator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -21,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FoodSearchService {
     private final FoodRepository foodRepository;
-    private final FoodNameValidator foodNameValidator;
+    private final NameValidator nameValidator;
     private final DataGoKrFoodClient dataGoKrFoodClient;
     private final DataGoKrProperties properties;
 
@@ -31,7 +28,7 @@ public class FoodSearchService {
     @Transactional
     public Long getIdByName(String name){
         String normalized = (name == null) ? null : name.trim();
-        if(!foodNameValidator.isValid(normalized)) return null;
+        if(!nameValidator.isValid(normalized)) return null;
 
         // db에 없으면 null 값 반환
         Long existingId = foodRepository
@@ -50,7 +47,7 @@ public class FoodSearchService {
     }
 
     public List<FoodSuggestionDto> suggestFoods(String name) {
-        if (!foodNameValidator.isValid(name)) {
+        if (!nameValidator.isValid(name)) {
             return List.of();
         }
         return foodRepository

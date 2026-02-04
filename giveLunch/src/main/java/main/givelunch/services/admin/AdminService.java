@@ -2,8 +2,8 @@ package main.givelunch.services.admin;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.FoodDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
 import main.givelunch.entities.Food;
 import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
