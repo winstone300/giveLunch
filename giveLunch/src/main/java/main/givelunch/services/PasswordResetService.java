@@ -3,12 +3,14 @@ package main.givelunch.services;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
+import main.givelunch.validators.NameValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PasswordResetService {
     private static final int CODE_LENGTH = 6;
     private static final int EXPIRE_MINUTES = 10;
@@ -30,14 +33,18 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
+    private final NameValidator nameValidator;
 
     @Value("${spring.mail.username}")
     private String mailUsername;
 
     @Transactional
-    public void sendResetCode(String email) {
+    public void sendResetCode(String userName, String email) {
+        if(!nameValidator.isValid(userName)) {
+            throw new ValidationException(ErrorCode.INVALID_USERNAME);
+        }
         validateEmail(email);
-        if (!userRepository.existsByEmail(email)) {
+        if (!userRepository.existsByUserNameAndEmail(userName, email)) {
             throw new ValidationException(ErrorCode.USER_NOT_FOUND);
         }
 

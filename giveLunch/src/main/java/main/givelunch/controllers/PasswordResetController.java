@@ -3,6 +3,7 @@ package main.givelunch.controllers;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.PasswordResetConfirmDto;
 import main.givelunch.dto.PasswordResetRequestDto;
+import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.services.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,22 +28,27 @@ public class PasswordResetController {
     @PostMapping("/forgot-password")
     public String sendResetCode(@ModelAttribute PasswordResetRequestDto req, Model model) {
         try {
-            passwordResetService.sendResetCode(req.email());
-            model.addAttribute("message", "비밀번호 재설정 코드가 이메일로 전송되었습니다.");
-            return "login/forgotPassword";
+            passwordResetService.sendResetCode(req.userName(), req.email());
+            return "redirect:/reset-password";
         } catch (ValidationException e) {
-            model.addAttribute("error", e.getMessage());
+            if (e.getErrorCode() == ErrorCode.USER_NOT_FOUND
+            || e.getErrorCode() == ErrorCode.INVALID_EMAIL
+            || e.getErrorCode() == ErrorCode.INVALID_USERNAME ){
+                model.addAttribute("error", "아이디 또는 이메일이 올바르지 않습니다.");
+            } else {
+                model.addAttribute("error", e.getMessage());
+            }
             return "login/forgotPassword";
         }
     }
 
-    @Operation(summary = "비밀번호 재설정 화면", description = "재설정 코드와 새 비밀번호를 입력하는 화면을 반환합니다.")
+    @Operation(summary = "비밀번호 재설정 화면", description = "재설정 코드와 새 비밀번호를 입력하는 화면을 반환")
     @GetMapping("/reset-password")
     public String resetPassword() {
         return "login/resetPassword";
     }
 
-    @Operation(summary = "비밀번호 재설정 처리", description = "재설정 코드를 검증하고 새 비밀번호로 변경합니다.")
+    @Operation(summary = "비밀번호 재설정 처리", description = "재설정 코드를 검증하고 새 비밀번호로 변경")
     @PostMapping("/reset-password")
     public String resetPassword(@ModelAttribute PasswordResetConfirmDto req, Model model) {
         try {
