@@ -1,4 +1,4 @@
-package main.givelunch.dto;
+package main.givelunch.dto.FoodAndNutritionDto;
 
 public record FoodAndNutritionDto(
         Long foodId,

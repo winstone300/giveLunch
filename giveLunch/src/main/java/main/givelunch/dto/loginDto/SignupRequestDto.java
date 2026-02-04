@@ -1,4 +1,4 @@
-package main.givelunch.dto;
+package main.givelunch.dto.loginDto;
 
 public record SignupRequestDto(
         String userName,

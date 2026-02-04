@@ -2,10 +2,10 @@ package main.givelunch.controllers;
 
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.EmailVerificationConfirmDto;
-import main.givelunch.dto.EmailVerificationRequestDto;
+import main.givelunch.dto.loginDto.emailDto.EmailVerificationConfirmDto;
+import main.givelunch.dto.loginDto.emailDto.EmailVerificationRequestDto;
 import main.givelunch.exception.ValidationException;
-import main.givelunch.services.EmailVerificationService;
+import main.givelunch.services.login.EmailVerificationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

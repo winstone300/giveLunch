@@ -1,0 +1,117 @@
+package main.givelunch.services;
+
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
+import main.givelunch.entities.PasswordResetToken;
+import main.givelunch.entities.UserInfo;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
+import main.givelunch.repositories.PasswordResetTokenRepository;
+import main.givelunch.repositories.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class PasswordResetService {
+    private static final int CODE_LENGTH = 6;
+    private static final int EXPIRE_MINUTES = 10;
+    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
+
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String mailUsername;
+
+    @Transactional
+    public void sendResetCode(String email) {
+        validateEmail(email);
+        if (!userRepository.existsByEmail(email)) {
+            throw new ValidationException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        String code = generateCode();
+        LocalDateTime now = LocalDateTime.now();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .code(code)
+                .used(false)
+                .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
+                .createdAt(now)
+                .build();
+
+        passwordResetTokenRepository.save(token);
+        sendMail(email, code);
+    }
+
+    @Transactional
+    public void resetPassword(String email, String code, String password, String passwordConfirm) {
+        validateEmail(email);
+        if (code == null || code.isBlank()) {
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+        }
+        if (password == null || password.isBlank()) {
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD);
+        }
+        if (!password.equals(passwordConfirm)) {
+            throw new ValidationException(ErrorCode.PASSWORD_MISMATCH);
+        }
+
+        PasswordResetToken token = passwordResetTokenRepository
+                .findTopByEmailAndCodeOrderByCreatedAtDesc(email, code)
+                .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE));
+
+        if (token.isUsed()) {
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+        }
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
+        }
+
+        UserInfo userInfo = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ValidationException(ErrorCode.USER_NOT_FOUND));
+        userInfo.setPassword(passwordEncoder.encode(password));
+        token.setUsed(true);
+    }
+
+    private void sendMail(String email, String code) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailUsername);
+        message.setTo(email);
+        message.setSubject("GiveLunch 비밀번호 재설정 코드");
+        message.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "
+                + EXPIRE_MINUTES + "분 내에 입력해주세요.");
+        try {
+            mailSender.send(message);
+        } catch (MailException e) {
+            logger.warn("Failed to send password reset email to {}", email, e);
+            throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
+        }
+    }
+
+    private void validateEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new ValidationException(ErrorCode.INVALID_EMAIL);
+        }
+    }
+
+    private String generateCode() {
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(CODE_LENGTH);
+        for (int i = 0; i < CODE_LENGTH; i++) {
+            sb.append(random.nextInt(10));
+        }
+        return sb.toString();
+    }
+}

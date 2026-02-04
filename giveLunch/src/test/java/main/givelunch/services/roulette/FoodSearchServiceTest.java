@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 
-import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import main.givelunch.validators.FoodNameValidator;
@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;

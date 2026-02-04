@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import main.givelunch.dto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.exception.FoodNotFoundException;

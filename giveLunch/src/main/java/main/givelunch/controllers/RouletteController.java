@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import java.security.Principal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.FoodSuggestionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
 import main.givelunch.dto.MenuDto;
 import main.givelunch.services.roulette.FoodSearchService;
 import main.givelunch.services.roulette.MenuService;

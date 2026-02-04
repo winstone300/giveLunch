@@ -12,10 +12,13 @@ public enum ErrorCode {
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "비밀번호를 입력해주세요."),
     INVALID_EMAIL(HttpStatus.BAD_REQUEST, "INVALID_EMAIL", "이메일을 입력해주세요."),
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "PASSWORD_MISMATCH", "비밀번호 확인이 일치하지 않습니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다."),
     DUPLICATE_USERNAME(HttpStatus.CONFLICT, "DUPLICATE_USERNAME", "이미 사용 중인 아이디입니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", "이미 사용 중인 이메일입니다."),
     EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "EMAIL_NOT_VERIFIED", "이메일 인증을 완료해주세요."),
     INVALID_EMAIL_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "INVALID_EMAIL_VERIFICATION_CODE", "이메일 인증번호가 올바르지 않습니다."),
+    INVALID_PASSWORD_RESET_CODE(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_RESET_CODE", "비밀번호 재설정 코드가 올바르지 않습니다."),
+    PASSWORD_RESET_EXPIRED(HttpStatus.BAD_REQUEST, "PASSWORD_RESET_EXPIRED", "비밀번호 재설정 코드가 만료되었습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;

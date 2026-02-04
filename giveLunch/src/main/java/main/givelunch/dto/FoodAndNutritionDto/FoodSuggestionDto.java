@@ -1,4 +1,4 @@
-package main.givelunch.dto;
+package main.givelunch.dto.FoodAndNutritionDto;
 
 import lombok.Builder;
 import main.givelunch.entities.Food;

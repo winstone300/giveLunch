@@ -10,13 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.List;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -10,9 +10,9 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-import main.givelunch.dto.FoodAndNutritionDto;
-import main.givelunch.dto.FoodDto;
-import main.givelunch.dto.NutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
+import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.FoodNotFoundException;
@@ -26,7 +26,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
-import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {

@@ -1,7 +1,7 @@
 package main.givelunch.services.login;
 
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.SignupRequestDto;
+import main.givelunch.dto.loginDto.SignupRequestDto;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
 import main.givelunch.repositories.UserRepository;

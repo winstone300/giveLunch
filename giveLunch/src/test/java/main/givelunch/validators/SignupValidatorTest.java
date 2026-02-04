@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import main.givelunch.dto.SignupRequestDto;
+import main.givelunch.dto.loginDto.SignupRequestDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.EmailVerificationRepository;

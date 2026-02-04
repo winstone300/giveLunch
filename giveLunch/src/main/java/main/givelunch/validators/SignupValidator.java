@@ -1,7 +1,7 @@
 package main.givelunch.validators;
 
 import lombok.RequiredArgsConstructor;
-import main.givelunch.dto.SignupRequestDto;
+import main.givelunch.dto.loginDto.SignupRequestDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.EmailVerificationRepository;
