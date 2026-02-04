@@ -16,7 +16,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class RestExceptionHandler {
     // Food data가 없을 때
     @ExceptionHandler(FoodNotFoundException.class)
     public ResponseEntity<ErrorResponseDto> foodNotFound(FoodNotFoundException e) {

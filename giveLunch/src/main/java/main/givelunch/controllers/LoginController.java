@@ -26,13 +26,8 @@ public class LoginController {
     }
 
     @PostMapping("/signup")
-    public String signup(@ModelAttribute SignupRequestDto req, Model model) {
-        try {
-            signupService.signup(req);
-            return "redirect:/login?success";
-        } catch (ValidationException e) {
-            model.addAttribute("error", e.getMessage());
-            return "login/signup";
-        }
+    public String signup(@ModelAttribute SignupRequestDto req) {
+        signupService.signup(req);
+        return "redirect:/login?success";
     }
 }
