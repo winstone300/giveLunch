@@ -10,7 +10,6 @@ import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
-import main.givelunch.validators.NameValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,14 +32,13 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
-    private final NameValidator nameValidator;
 
     @Value("${spring.mail.username}")
     private String mailUsername;
 
     @Transactional
     public void sendResetCode(String userName, String email) {
-        if(!nameValidator.isValid(userName)) {
+        if (userName == null || userName.isBlank()){
             throw new ValidationException(ErrorCode.INVALID_USERNAME);
         }
         validateEmail(email);
