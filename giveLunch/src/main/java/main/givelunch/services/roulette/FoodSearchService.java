@@ -5,10 +5,11 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
+import main.givelunch.exception.ErrorCode;
+import main.givelunch.exception.ValidationException;
 import main.givelunch.properties.DataGoKrProperties;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
-import main.givelunch.validators.NameValidator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class FoodSearchService {
     private final FoodRepository foodRepository;
-    private final NameValidator nameValidator;
     private final DataGoKrFoodClient dataGoKrFoodClient;
     private final DataGoKrProperties properties;
 
@@ -28,7 +28,9 @@ public class FoodSearchService {
     @Transactional
     public Long getIdByName(String name){
         String normalized = (name == null) ? null : name.trim();
-        if(!nameValidator.isValid(normalized)) return null;
+        if (normalized == null || normalized.isBlank()) {
+            throw new ValidationException(ErrorCode.INVALID_FOOD_NAME);
+        }
 
         // db에 없으면 null 값 반환
         Long existingId = foodRepository
@@ -47,7 +49,7 @@ public class FoodSearchService {
     }
 
     public List<FoodSuggestionDto> suggestFoods(String name) {
-        if (!nameValidator.isValid(name)) {
+        if (name == null || name.isBlank()) {
             return List.of();
         }
         return foodRepository
