@@ -13,6 +13,7 @@ import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.model.Role;
 import main.givelunch.repositories.UserRepository;
+import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.validators.SignupValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class SignupServiceTest {
 
     @Mock
     private SignupValidator signupValidator;
+
+    @Mock
+    private EmailVerificationRepository emailVerificationRepository;
 
     @InjectMocks
     private SignupService signupService;
@@ -60,6 +64,7 @@ class SignupServiceTest {
         assertThat(saved.getPassword()).isEqualTo("encoded-pass");
         assertThat(saved.getEmail()).isEqualTo("tester@example.com");
         assertThat(saved.getRole()).isEqualTo(Role.USER);
+        verify(emailVerificationRepository).deleteByEmail("tester@example.com");
     }
 
     @Test

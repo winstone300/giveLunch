@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.loginDto.SignupRequestDto;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
+import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import main.givelunch.validators.SignupValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,7 @@ public class SignupService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final SignupValidator signupValidator;
+    private final EmailVerificationRepository emailVerificationRepository;
 
     @Transactional
     public void signup(SignupRequestDto req){
@@ -29,5 +31,6 @@ public class SignupService {
                 .build();
 
         userRepository.save(user);
+        emailVerificationRepository.deleteByEmail(req.email());
     }
 }
