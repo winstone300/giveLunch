@@ -83,7 +83,6 @@ class PasswordResetControllerIntegrationTest {
         assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
         PasswordResetToken token = passwordResetTokenRepository.findAll().get(0);
         assertThat(token.getEmail()).isEqualTo("reset@example.com");
-        assertThat(token.isUsed()).isFalse();
     }
 
     @Test
@@ -113,7 +112,6 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset2@example.com")
                 .code("654321")
-                .used(false)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -129,11 +127,6 @@ class PasswordResetControllerIntegrationTest {
 
         UserInfo updated = userRepository.findByEmail("reset2@example.com").orElseThrow();
         assertThat(passwordEncoder.matches("newPassword", updated.getPassword())).isTrue();
-
-        PasswordResetToken token = passwordResetTokenRepository
-                .findTopByEmailAndCodeOrderByCreatedAtDesc("reset2@example.com", "654321")
-                .orElseThrow();
-        assertThat(token.isUsed()).isTrue();
     }
 
     @Test
@@ -179,7 +172,6 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset3@example.com")
                 .code("111111")
-                .used(false)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -209,7 +201,6 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset4@example.com")
                 .code("333333")
-                .used(false)
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .createdAt(LocalDateTime.now())
                 .build());

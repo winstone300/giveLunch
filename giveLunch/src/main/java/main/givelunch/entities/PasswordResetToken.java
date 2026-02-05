@@ -33,9 +33,6 @@ public class PasswordResetToken {
     private String code;
 
     @Column(nullable = false)
-    private boolean used;
-
-    @Column(nullable = false)
     private LocalDateTime expiresAt;
 
     @Column(nullable = false)

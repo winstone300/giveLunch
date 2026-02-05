@@ -37,6 +37,8 @@ public class EmailVerificationService {
             throw new ValidationException(ErrorCode.DUPLICATE_EMAIL);
         }
 
+        emailVerificationRepository.deleteByEmail(email);
+
         String code = generateCode();
         LocalDateTime now = LocalDateTime.now();
         EmailVerification verification = EmailVerification.builder()

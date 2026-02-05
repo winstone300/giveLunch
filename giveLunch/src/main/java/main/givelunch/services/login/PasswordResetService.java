@@ -46,12 +46,13 @@ public class PasswordResetService {
             throw new ValidationException(ErrorCode.USER_NOT_FOUND);
         }
 
+        passwordResetTokenRepository.deleteByEmail(email);
+
         String code = generateCode();
         LocalDateTime now = LocalDateTime.now();
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
-                .used(false)
                 .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
                 .createdAt(now)
                 .build();
@@ -77,9 +78,6 @@ public class PasswordResetService {
                 .findTopByEmailAndCodeOrderByCreatedAtDesc(email, code)
                 .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE));
 
-        if (token.isUsed()) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
-        }
         if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
         }
@@ -87,7 +85,7 @@ public class PasswordResetService {
         UserInfo userInfo = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ValidationException(ErrorCode.USER_NOT_FOUND));
         userInfo.setPassword(passwordEncoder.encode(password));
-        token.setUsed(true);
+        passwordResetTokenRepository.deleteByEmail(email);
     }
 
     private void sendMail(String email, String code) {

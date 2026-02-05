@@ -67,7 +67,6 @@ class PasswordResetServiceTest {
         PasswordResetToken savedToken = tokenCaptor.getValue();
         assertThat(savedToken.getEmail()).isEqualTo(email);
         assertThat(savedToken.getCode()).matches("\\d{6}");
-        assertThat(savedToken.isUsed()).isFalse();
         assertThat(savedToken.getExpiresAt()).isAfter(savedToken.getCreatedAt());
 
         ArgumentCaptor<SimpleMailMessage> mailCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
@@ -101,7 +100,6 @@ class PasswordResetServiceTest {
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
-                .used(false)
                 .createdAt(LocalDateTime.now().minusMinutes(1))
                 .expiresAt(LocalDateTime.now().plusMinutes(5))
                 .build();
@@ -121,7 +119,6 @@ class PasswordResetServiceTest {
 
         // then
         assertThat(user.getPassword()).isEqualTo("encodedPassword");
-        assertThat(token.isUsed()).isTrue();
     }
 
     @Test
@@ -143,7 +140,6 @@ class PasswordResetServiceTest {
         PasswordResetToken expiredToken = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
-                .used(false)
                 .createdAt(LocalDateTime.now().minusMinutes(20))
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .build();
