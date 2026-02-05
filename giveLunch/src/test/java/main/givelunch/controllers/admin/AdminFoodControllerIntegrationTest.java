@@ -6,12 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import jakarta.persistence.EntityManager;
-import java.math.BigDecimal;
 import java.util.List;
-import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
-import main.givelunch.dto.FoodAndNutritionDto.NutritionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
 import main.givelunch.repositories.FoodRepository;
@@ -44,6 +43,31 @@ class AdminFoodControllerIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /api/admin/foods: 관리자 조회 시 음식 목록 반환")
+    void loadFoodsReturnsListForAdmin() throws Exception {
+        mockMvc.perform(post("/api/admin/foods")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildFoodRequestJson("비빔밥", "한식", 450)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/admin/foods"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("비빔밥"))
+                .andExpect(jsonPath("$[0].category").value("한식"));
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("GET /api/admin/foods: 일반 user 조회 접근 차단")
+    void loadFoodsForbiddenForUser() throws Exception {
+        mockMvc.perform(get("/api/admin/foods"))
+                .andExpect(status().isForbidden());
+    }
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -161,22 +185,5 @@ class AdminFoodControllerIntegrationTest {
                 "}," +
                 "\"source\":\"test\"" +
                 "}";
-    }
-
-    private FoodAndNutritionDto sampleFoodDto(String name, String category, int calories) {
-        return FoodAndNutritionDto.of(
-                null,
-                name,
-                category,
-                "http://example.com/food.png",
-                100,
-                NutritionDto.of(
-                        BigDecimal.valueOf(calories),
-                        BigDecimal.valueOf(12.5),
-                        BigDecimal.valueOf(8.0),
-                        BigDecimal.valueOf(65.0)
-                ),
-                "test"
-        );
     }
 }

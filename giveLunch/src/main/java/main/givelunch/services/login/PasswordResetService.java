@@ -1,4 +1,4 @@
-package main.givelunch.services;
+package main.givelunch.services.login;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;

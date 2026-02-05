@@ -3,7 +3,7 @@ package main.givelunch.controllers;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.PasswordResetConfirmDto;
 import main.givelunch.dto.PasswordResetRequestDto;
-import main.givelunch.services.PasswordResetService;
+import main.givelunch.services.login.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
