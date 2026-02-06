@@ -8,6 +8,7 @@ import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
 import org.slf4j.Logger;
@@ -32,6 +33,7 @@ public class PasswordResetService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
+    private final SecurityProperties securityProperties;
 
     @Value("${spring.mail.username}")
     private String mailUsername;
@@ -55,6 +57,7 @@ public class PasswordResetService {
                 .code(code)
                 .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
                 .createdAt(now)
+                .attemptCount(0)
                 .build();
 
         passwordResetTokenRepository.save(token);
@@ -75,17 +78,35 @@ public class PasswordResetService {
         }
 
         PasswordResetToken token = passwordResetTokenRepository
-                .findTopByEmailAndCodeOrderByCreatedAtDesc(email, code)
+                .findTopByEmailOrderByCreatedAtDesc(email)
                 .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE));
 
-        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        if (token.isBlocked(now)) {
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+        }
+        if (token.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
+        }
+        if (!token.getCode().equals(code)) {
+            increaseAttemptOrBlock(token, now);
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
         }
 
         UserInfo userInfo = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ValidationException(ErrorCode.USER_NOT_FOUND));
         userInfo.setPassword(passwordEncoder.encode(password));
         passwordResetTokenRepository.deleteByEmail(email);
+    }
+
+    private void increaseAttemptOrBlock(PasswordResetToken token, LocalDateTime now) {
+        int nextAttempt = token.getAttemptCount() + 1;
+        if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
+            token.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
+            token.setAttemptCount(0);
+            return;
+        }
+        token.setAttemptCount(nextAttempt);
     }
 
     private void sendMail(String email, String code) {

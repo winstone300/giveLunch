@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,4 +41,15 @@ public class UserInfo {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private Role role = Role.USER;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int failedLoginCount = 0;
+
+    @Column
+    private LocalDateTime lockedUntil;
+
+    public boolean isCurrentlyLocked(LocalDateTime now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
 }

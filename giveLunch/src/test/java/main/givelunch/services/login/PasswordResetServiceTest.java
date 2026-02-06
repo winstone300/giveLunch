@@ -109,7 +109,7 @@ class PasswordResetServiceTest {
                 .email(email)
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailAndCodeOrderByCreatedAtDesc(email, code))
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
                 .thenReturn(Optional.of(token));
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("newPassword")).thenReturn("encodedPassword");
@@ -144,7 +144,7 @@ class PasswordResetServiceTest {
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailAndCodeOrderByCreatedAtDesc(email, code))
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
                 .thenReturn(Optional.of(expiredToken));
 
         // when & then
@@ -152,5 +152,29 @@ class PasswordResetServiceTest {
                 .isInstanceOf(ValidationException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PASSWORD_RESET_EXPIRED);
+    }
+
+    @Test
+    @DisplayName("resetPassword - 코드 오입력 누적 시 차단 처리")
+    void resetPassword_blocksAfterTooManyAttempts() {
+        String email = "member@example.com";
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .code("123456")
+                .attemptCount(4)
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
+                .isInstanceOf(ValidationException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+
+        assertThat(token.getBlockedUntil()).isNotNull();
+        assertThat(token.getAttemptCount()).isEqualTo(0);
     }
 }

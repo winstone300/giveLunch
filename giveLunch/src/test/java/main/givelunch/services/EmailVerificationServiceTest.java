@@ -7,6 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+import main.givelunch.entities.EmailVerification;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.EmailVerificationRepository;
@@ -75,5 +78,26 @@ class EmailVerificationServiceTest {
         // then
         verify(mailSender, never()).send(any(SimpleMailMessage.class));
         verify(emailVerificationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("인증 코드 오입력 누적 시 attemptCount 증가")
+    void confirmVerification_increasesAttemptCountOnInvalidCode() {
+        EmailVerification verification = EmailVerification.builder()
+                .email("user@example.com")
+                .code("111111")
+                .verified(false)
+                .attemptCount(0)
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc("user@example.com"))
+                .thenReturn(Optional.of(verification));
+
+        assertThatThrownBy(() -> emailVerificationService.confirmVerification("user@example.com", "222222"))
+                .isInstanceOf(ValidationException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+        assertThat(verification.getAttemptCount()).isEqualTo(1);
     }
 }

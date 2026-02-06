@@ -1,9 +1,11 @@
 package main.givelunch.services.login;
 
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
 import main.givelunch.repositories.UserRepository;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -18,6 +20,10 @@ public class LoginUserDetailService implements UserDetailsService {
     public UserDetails loadUserByUsername(String userName) throws UsernameNotFoundException {
         UserInfo userInfo = userRepository.findByUserName(userName)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (userInfo.isCurrentlyLocked(LocalDateTime.now())) {
+            throw new LockedException("User account is locked");
+        }
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(userInfo.getUserName())

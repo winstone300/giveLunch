@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmailVerificationService {
     private static final int CODE_LENGTH = 6;
     private static final int EXPIRE_MINUTES = 10;
+    private static final int MAX_VERIFY_ATTEMPTS = 5;
+    private static final int BLOCK_MINUTES = 10;
     private static final Logger logger = LoggerFactory.getLogger(EmailVerificationService.class);
 
     private final EmailVerificationRepository emailVerificationRepository;
@@ -47,6 +49,7 @@ public class EmailVerificationService {
                 .verified(false)
                 .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
                 .createdAt(now)
+                .attemptCount(0)
                 .build();
 
         emailVerificationRepository.save(verification);
@@ -60,15 +63,36 @@ public class EmailVerificationService {
             throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
         }
 
-        EmailVerification verification = emailVerificationRepository
-                .findTopByEmailAndCodeOrderByCreatedAtDesc(email, code)
+        EmailVerification latest = emailVerificationRepository
+                .findTopByEmailOrderByCreatedAtDesc(email)
                 .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE));
 
-        if (verification.isVerified() || verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        if (latest.isBlocked(now)) {
+            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+        }
+        if (latest.isVerified() || latest.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
         }
 
-        verification.setVerified(true);
+        if (!latest.getCode().equals(code)) {
+            increaseAttemptOrBlock(latest, now);
+            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+        }
+
+        latest.setVerified(true);
+        latest.setAttemptCount(0);
+        latest.setBlockedUntil(null);
+    }
+
+    private void increaseAttemptOrBlock(EmailVerification verification, LocalDateTime now) {
+        int nextAttempt = verification.getAttemptCount() + 1;
+        if (nextAttempt >= MAX_VERIFY_ATTEMPTS) {
+            verification.setBlockedUntil(now.plusMinutes(BLOCK_MINUTES));
+            verification.setAttemptCount(0);
+            return;
+        }
+        verification.setAttemptCount(nextAttempt);
     }
 
     private void sendMail(String email, String code) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -47,6 +49,22 @@ class LoginUserDetailServiceTest {
         assertThat(result.getAuthorities())
                 .extracting("authority")
                 .containsExactly("ROLE_USER");
+    }
+
+    @Test
+    @DisplayName("loadUserByUsername - 잠긴 계정이면 LockedException")
+    void loadUserByUsername_throwsWhenLocked() {
+        UserInfo user = UserInfo.builder()
+                .userName("tester")
+                .password("encoded-password")
+                .role(Role.USER)
+                .lockedUntil(LocalDateTime.now().plusMinutes(5))
+                .build();
+        when(userRepository.findByUserName("tester")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> loginUserDetailService.loadUserByUsername("tester"))
+                .isInstanceOf(LockedException.class)
+                .hasMessage("User account is locked");
     }
 
     @Test
