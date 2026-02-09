@@ -1,9 +1,7 @@
 package main.givelunch.services.login;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
@@ -39,9 +37,6 @@ public class PasswordResetService {
 
     @Transactional
     public void sendResetCode(String userName, String email) {
-        if (userName == null || userName.isBlank()){
-            throw new ValidationException(ErrorCode.INVALID_USERNAME);
-        }
         verificationCodeSupport.validateEmail(email);
         if (!userRepository.existsByUserNameAndEmail(userName, email)) {
             throw new ValidationException(ErrorCode.USER_NOT_FOUND);
@@ -89,9 +84,6 @@ public class PasswordResetService {
         verificationCodeSupport.validateEmail(email);
         verificationCodeSupport.validateCode(code, ErrorCode.INVALID_PASSWORD_RESET_CODE);
 
-        if (password == null || password.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD);
-        }
         if (!password.equals(passwordConfirm)) {
             throw new ValidationException(ErrorCode.PASSWORD_MISMATCH);
         }

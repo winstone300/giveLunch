@@ -3,7 +3,6 @@ package main.givelunch.controllers.exceptionHandler;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import main.givelunch.controllers.PasswordResetController;
 import main.givelunch.dto.ErrorResponseDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.FoodNotFoundException;
@@ -48,11 +47,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(ValidationException e) {
-        ErrorCode errorCode = e.getErrorCode();
-        if (errorCode.isFieldErrorResponse()) {
-            return buildFieldErrorResponse(errorCode, Map.of());
-        }
-        return buildErrorResponse(errorCode);
+        return buildErrorResponse(e.getErrorCode());
     }
 
     private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode) {
