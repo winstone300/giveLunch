@@ -12,5 +12,16 @@ public record SecurityProperties(
 
         // 설정 파일에 값이 없으면 "/admin/**"
         @DefaultValue("/admin/**")
-        List<String> permitAdmin
-) {}
+        List<String> permitAdmin,
+
+        LoginProperties login
+) {
+        public record LoginProperties(
+                @DefaultValue("5")
+                int maxFailedAttempts,
+
+                @DefaultValue("15")
+                long lockMinutes
+        ) {
+        }
+}

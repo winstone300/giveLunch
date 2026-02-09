@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
     Optional<PasswordResetToken> findTopByEmailAndCodeOrderByCreatedAtDesc(String email, String code);
+    Optional<PasswordResetToken> findTopByEmailOrderByCreatedAtDesc(String email);
     void deleteByEmail(String email);
 }

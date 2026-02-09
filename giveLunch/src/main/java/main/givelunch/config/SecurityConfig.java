@@ -3,6 +3,7 @@ package main.givelunch.config;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.model.Role;
 import main.givelunch.properties.SecurityProperties;
+import main.givelunch.services.login.LoginAttemptService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
     private final SecurityProperties securityProperties;
+    private final LoginAttemptService loginAttemptService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -36,10 +38,11 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
-                        .loginPage("/login")    // GET /login -> 내가 만든 페이지
-                        .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리(중요)
+                        .loginPage("/login")    // GET /login -> 내가 만든 페이지로 이동
+                        .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리
                         .usernameParameter("userName")
                         .successHandler((request, response, authentication) -> {
+                            loginAttemptService.onLoginSuccess(authentication.getName());
                             boolean isAdmin = authentication.getAuthorities().stream()
                                     .anyMatch(a -> a.getAuthority().equals(Role.ADMIN.value()));
                             if (isAdmin) {
@@ -48,8 +51,13 @@ public class SecurityConfig {
                                 response.sendRedirect("/roulette");   // 일반 성공 URL
                             }
                         })
-                        .failureUrl("/login?error=true")
-                        .permitAll()
+                        .failureHandler((request, response, exception) -> {
+                            String userName = request.getParameter("userName");
+                            if (userName != null && !userName.isBlank()) {
+                                loginAttemptService.onLoginFailure(userName);
+                            }
+                            response.sendRedirect("/login?error=true");
+                        })                        .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")

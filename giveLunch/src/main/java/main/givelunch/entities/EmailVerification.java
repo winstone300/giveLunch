@@ -40,4 +40,15 @@ public class EmailVerification {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int attemptCount = 0;
+
+    @Column
+    private LocalDateTime blockedUntil;
+
+    public boolean isBlocked(LocalDateTime now) {
+        return blockedUntil != null && blockedUntil.isAfter(now);
+    }
 }

@@ -8,14 +8,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,8 +47,22 @@ class PasswordResetServiceTest {
     @Mock
     private JavaMailSender mailSender;
 
-    @InjectMocks
     private PasswordResetService passwordResetService;
+
+    @BeforeEach
+    void setUp() {
+        SecurityProperties securityProperties = new SecurityProperties(
+                List.of(),
+                List.of("/admin/**"),
+                new SecurityProperties.LoginProperties(5, 15)
+        );
+        passwordResetService = new PasswordResetService(
+                passwordResetTokenRepository,
+                userRepository,
+                passwordEncoder,
+                mailSender,
+                securityProperties);
+    }
 
     @Test
     @DisplayName("sendResetCode - 유저 정보가 맞으면 토큰 저장 후 메일 전송")
@@ -109,7 +126,7 @@ class PasswordResetServiceTest {
                 .email(email)
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailAndCodeOrderByCreatedAtDesc(email, code))
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
                 .thenReturn(Optional.of(token));
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("newPassword")).thenReturn("encodedPassword");
@@ -144,7 +161,7 @@ class PasswordResetServiceTest {
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailAndCodeOrderByCreatedAtDesc(email, code))
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
                 .thenReturn(Optional.of(expiredToken));
 
         // when & then
@@ -152,5 +169,29 @@ class PasswordResetServiceTest {
                 .isInstanceOf(ValidationException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PASSWORD_RESET_EXPIRED);
+    }
+
+    @Test
+    @DisplayName("resetPassword - 코드 오입력 누적 시 차단 처리")
+    void resetPassword_blocksAfterTooManyAttempts() {
+        String email = "member@example.com";
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .code("123456")
+                .attemptCount(4)
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
+                .isInstanceOf(ValidationException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+
+        assertThat(token.getBlockedUntil()).isNotNull();
+        assertThat(token.getAttemptCount()).isEqualTo(0);
     }
 }

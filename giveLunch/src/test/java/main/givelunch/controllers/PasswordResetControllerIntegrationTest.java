@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
 import org.junit.jupiter.api.DisplayName;
