@@ -8,14 +8,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,8 +47,22 @@ class PasswordResetServiceTest {
     @Mock
     private JavaMailSender mailSender;
 
-    @InjectMocks
     private PasswordResetService passwordResetService;
+
+    @BeforeEach
+    void setUp() {
+        SecurityProperties securityProperties = new SecurityProperties(
+                List.of(),
+                List.of("/admin/**"),
+                new SecurityProperties.LoginProperties(5, 15)
+        );
+        passwordResetService = new PasswordResetService(
+                passwordResetTokenRepository,
+                userRepository,
+                passwordEncoder,
+                mailSender,
+                securityProperties);
+    }
 
     @Test
     @DisplayName("sendResetCode - 유저 정보가 맞으면 토큰 저장 후 메일 전송")
