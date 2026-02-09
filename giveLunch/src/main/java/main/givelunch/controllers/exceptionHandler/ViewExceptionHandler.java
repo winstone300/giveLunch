@@ -25,10 +25,10 @@ public class ViewExceptionHandler {
             if (EnumSet.of(ErrorCode.USER_NOT_FOUND, ErrorCode.INVALID_EMAIL, ErrorCode.INVALID_USERNAME).contains(code)) {
                 message = "아이디 또는 이메일이 올바르지 않습니다.";
             }
-            return buildView("login/forgotPassword", message);
+            return buildView("login/forgot-password", message);
         }
         if (path.endsWith("/reset-password")) {
-            return buildView("login/resetPassword", e.getMessage());
+            return buildView("login/reset-password", e.getMessage());
         }
         return buildView("login/login", e.getMessage());
     }

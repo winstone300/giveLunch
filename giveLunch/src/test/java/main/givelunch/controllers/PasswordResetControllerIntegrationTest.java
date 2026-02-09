@@ -59,11 +59,11 @@ class PasswordResetControllerIntegrationTest {
     void resetViewsRender() throws Exception {
         mockMvc.perform(get("/forgot-password"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"));
+                .andExpect(view().name("login/forgot-password"));
 
         mockMvc.perform(get("/reset-password"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"));
+                .andExpect(view().name("login/reset-password"));
     }
 
     @Test
@@ -98,7 +98,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("userName", "missing")
                         .param("email", "missing@example.com"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"))
+                .andExpect(view().name("login/forgot-password"))
                 .andExpect(model().attribute("error", "아이디 또는 이메일이 올바르지 않습니다."));
     }
 
@@ -169,7 +169,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "different"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 확인이 일치하지 않습니다."));
     }
 
@@ -183,7 +183,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("userName", "")
                         .param("email", "reset@example.com"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"))
+                .andExpect(view().name("login/forgot-password"))
                 .andExpect(model().attribute("error", "아이디 또는 이메일이 올바르지 않습니다."));
     }
 
@@ -213,7 +213,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "newPassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 재설정 코드가 올바르지 않습니다."));
     }
 
@@ -243,7 +243,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "newPassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 재설정 코드 인증을 완료해주세요."));
     }
 
@@ -273,7 +273,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "newPassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 재설정 코드가 만료되었습니다."));
     }
 
