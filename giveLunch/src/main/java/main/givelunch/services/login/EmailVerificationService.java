@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationService {
-    private static final int CODE_LENGTH = 6;
     private static final int EXPIRE_MINUTES = 10;
     private static final int MAX_VERIFY_ATTEMPTS = 5;
     private static final int BLOCK_MINUTES = 10;
@@ -29,19 +28,22 @@ public class EmailVerificationService {
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
     private final JavaMailSender mailSender;
+    private final VerificationSupportService verificationSupportService;
+
     @Value("${spring.mail.username}")
     private String mailUsername;
 
+    //인증 메일 생성 + 전송 메서드 호출
     @Transactional
     public void sendVerificationCode(String email) {
-        validateEmail(email);
+        verificationSupportService.validateEmail(email);
         if (userRepository.existsByEmail(email)) {
             throw new ValidationException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         emailVerificationRepository.deleteByEmail(email);
 
-        String code = generateCode();
+        String code = verificationSupportService.generateCode();
         LocalDateTime now = LocalDateTime.now();
         EmailVerification verification = EmailVerification.builder()
                 .email(email)
@@ -56,45 +58,28 @@ public class EmailVerificationService {
         sendMail(email, code);
     }
 
-    @Transactional
+    // 인증 확인 & 실패시 시도 횟수 +1
+    @Transactional(noRollbackFor = ValidationException.class)
     public void confirmVerification(String email, String code) {
-        validateEmail(email);
-        if (code == null || code.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-        }
+        verificationSupportService.validateEmail(email);
+        verificationSupportService.validateCode(code,ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
 
         EmailVerification latest = emailVerificationRepository
                 .findTopByEmailOrderByCreatedAtDesc(email)
                 .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE));
 
-        LocalDateTime now = LocalDateTime.now();
-        if (latest.isBlocked(now)) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-        }
-        if (latest.isVerified() || latest.getExpiresAt().isBefore(now)) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-        }
-
-        if (!latest.getCode().equals(code)) {
-            increaseAttemptOrBlock(latest, now);
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-        }
-
-        latest.setVerified(true);
-        latest.setAttemptCount(0);
-        latest.setBlockedUntil(null);
+        verificationSupportService.verifyCodeAndMarkVerified(
+                latest,
+                code,
+                LocalDateTime.now(),
+                ErrorCode.INVALID_EMAIL_VERIFICATION_CODE,
+                ErrorCode.INVALID_EMAIL_VERIFICATION_CODE,
+                MAX_VERIFY_ATTEMPTS,
+                BLOCK_MINUTES,
+                true);
     }
 
-    private void increaseAttemptOrBlock(EmailVerification verification, LocalDateTime now) {
-        int nextAttempt = verification.getAttemptCount() + 1;
-        if (nextAttempt >= MAX_VERIFY_ATTEMPTS) {
-            verification.setBlockedUntil(now.plusMinutes(BLOCK_MINUTES));
-            verification.setAttemptCount(0);
-            return;
-        }
-        verification.setAttemptCount(nextAttempt);
-    }
-
+    // 메일 전송
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailUsername);
@@ -108,20 +93,5 @@ public class EmailVerificationService {
             logger.warn("Failed to send verification email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
-    }
-
-    private void validateEmail(String email) {
-        if (email == null || email.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL);
-        }
-    }
-
-    private String generateCode() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
-            sb.append(random.nextInt(10));
-        }
-        return sb.toString();
     }
 }

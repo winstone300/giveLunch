@@ -18,6 +18,7 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "EMAIL_NOT_VERIFIED", "이메일 인증을 완료해주세요."),
     INVALID_EMAIL_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "INVALID_EMAIL_VERIFICATION_CODE", "이메일 인증번호가 올바르지 않습니다."),
     INVALID_PASSWORD_RESET_CODE(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD_RESET_CODE", "비밀번호 재설정 코드가 올바르지 않습니다."),
+    PASSWORD_RESET_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "PASSWORD_RESET_NOT_VERIFIED", "비밀번호 재설정 코드 인증을 완료해주세요."),
     PASSWORD_RESET_EXPIRED(HttpStatus.BAD_REQUEST, "PASSWORD_RESET_EXPIRED", "비밀번호 재설정 코드가 만료되었습니다."),
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_SEND_FAILED", "이메일 전송에 실패했습니다. 잠시 후 다시 시도해주세요.");
 

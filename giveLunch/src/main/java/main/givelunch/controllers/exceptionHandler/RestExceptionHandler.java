@@ -3,6 +3,7 @@ package main.givelunch.controllers.exceptionHandler;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import main.givelunch.controllers.PasswordResetController;
 import main.givelunch.dto.ErrorResponseDto;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.FoodNotFoundException;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
-@RestControllerAdvice(annotations = RestController.class)
+@RestControllerAdvice(annotations = RestController.class, assignableTypes = PasswordResetController.class)
 public class RestExceptionHandler {
     // Food data가 없을 때
     @ExceptionHandler(FoodNotFoundException.class)
