@@ -5,8 +5,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
-    // 1. 공통 유효성 검사 (필드별 에러를 함께 반환)
-    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "입력값이 올바르지 않습니다.", true),
+    VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "입력값이 올바르지 않습니다."),
 
 
     FOOD_NOT_FOUND(HttpStatus.NOT_FOUND, "FOOD_NOT_FOUND", "해당 음식을 찾을 수 없습니다."),
@@ -30,16 +29,9 @@ public enum ErrorCode {
     private final HttpStatus status;
     private final String code;
     private final String message;
-    private final boolean fieldErrorResponse;
-
     ErrorCode(HttpStatus status, String code, String message) {
-        this(status, code, message, false);
-    }
-
-    ErrorCode(HttpStatus status, String code, String message, boolean fieldErrorResponse) {
         this.status = status;
         this.code = code;
         this.message = message;
-        this.fieldErrorResponse = fieldErrorResponse;
     }
 }

@@ -1,6 +1,7 @@
 package main.givelunch.controllers;
 
 import java.util.Map;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.loginDto.emailDto.EmailVerificationConfirmDto;
 import main.givelunch.services.login.PasswordResetService;
@@ -17,7 +18,7 @@ public class PasswordResetApiController {
 
     @Operation(summary = "비밀번호 재설정 코드 인증", description = "사용자가 입력한 재설정 코드가 유효한지 확인")
     @PostMapping("/reset-password/verify")
-    public ResponseEntity<Map<String, String>> verifyResetCode(@RequestBody EmailVerificationConfirmDto req) {
+    public ResponseEntity<Map<String, String>> verifyResetCode(@Valid @RequestBody EmailVerificationConfirmDto req) {
         passwordResetService.verifyResetCode(req.email(), req.code());
         return ResponseEntity.ok(Map.of("message", "코드 인증이 완료되었습니다."));
     }
