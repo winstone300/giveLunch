@@ -41,8 +41,9 @@ class LoginAttemptServiceTest {
         UserInfo user = UserInfo.builder().userName("tester").failedLoginCount(4).build();
         when(userRepository.findByUserName("tester")).thenReturn(Optional.of(user));
 
-        loginAttemptService.onLoginFailure("tester");
+        boolean locked = loginAttemptService.onLoginFailure("tester");
 
+        assertThat(locked).isTrue();
         assertThat(user.getLockedUntil()).isNotNull();
         assertThat(user.getFailedLoginCount()).isEqualTo(0);
     }
@@ -53,10 +54,24 @@ class LoginAttemptServiceTest {
         UserInfo user = UserInfo.builder().userName("tester").failedLoginCount(1).build();
         when(userRepository.findByUserName("tester")).thenReturn(Optional.of(user));
 
-        loginAttemptService.onLoginFailure("tester");
+        boolean locked = loginAttemptService.onLoginFailure("tester");
 
+        assertThat(locked).isFalse();
         assertThat(user.getFailedLoginCount()).isEqualTo(2);
         assertThat(user.getLockedUntil()).isNull();
+    }
+
+    @Test
+    @DisplayName("이미 잠금 상태면 true 반환")
+    void onLoginFailure_returnsTrueWhenAlreadyLocked() {
+        UserInfo user = UserInfo.builder().userName("tester").failedLoginCount(0).build();
+        user.setLockedUntil(LocalDateTime.now().plusMinutes(5));
+        when(userRepository.findByUserName("tester")).thenReturn(Optional.of(user));
+
+        boolean locked = loginAttemptService.onLoginFailure("tester");
+
+        assertThat(locked).isTrue();
+        assertThat(user.getFailedLoginCount()).isZero();
     }
 
     @Test

@@ -87,6 +87,27 @@ class EmailVerificationControllerIntegrationTest {
 
     @Test
     @WithMockUser
+    @DisplayName("POST /signup/email/verify: 인증 실패 시 남은 시도 횟수 메시지 반환")
+    void verifyCodeReturnsRemainingAttemptsMessageOnFailure() throws Exception {
+        emailVerificationRepository.save(EmailVerification.builder()
+                .email("fail@example.com")
+                .code("123456")
+                .verified(false)
+                .attemptCount(0)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        mockMvc.perform(post("/signup/email/verify")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"fail@example.com\",\"code\":\"000000\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("인증에 실패했습니다. 남은 시도 횟수: 4회"));
+    }
+
+    @Test
+    @WithMockUser
     @DisplayName("POST /signup/email/send: 이미 가입된 이메일이면 409 반환")
     void sendVerificationReturnsConflictForDuplicateEmail() throws Exception {
         userRepository.save(UserInfo.builder()

@@ -94,7 +94,7 @@ public class PasswordResetService {
 
         LocalDateTime now = LocalDateTime.now();
         if (token.isBlocked(now)) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE, ATTEMPT_EXCEEDED_MESSAGE);
         }
         if (token.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
@@ -113,17 +113,18 @@ public class PasswordResetService {
     }
 
 
+
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(mailUsername);
         message.setTo(email);
         message.setSubject("GiveLunch 비밀번호 재설정 코드");
         message.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "
-                + EXPIRE_MINUTES + "분 내에 입력해주세요.");
+                + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            logger.warn("Failed to send password reset email to {}", email, e);
+            log.warn("Failed to send password reset email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
     }
