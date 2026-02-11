@@ -1,9 +1,7 @@
 package main.givelunch.services.login;
 
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
@@ -23,37 +21,36 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PasswordResetService {
-    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
+    private static final int EXPIRE_MINUTES = 10;
+    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
 
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JavaMailSender mailSender;
     private final SecurityProperties securityProperties;
+    private final VerificationSupportService verificationCodeSupport;
 
     @Value("${spring.mail.username}")
     private String mailUsername;
 
     @Transactional
     public void sendResetCode(String userName, String email) {
-        if (userName == null || userName.isBlank()){
-            throw new ValidationException(ErrorCode.INVALID_USERNAME);
-        }
-        validateEmail(email);
+        verificationCodeSupport.validateEmail(email);
         if (!userRepository.existsByUserNameAndEmail(userName, email)) {
             throw new ValidationException(ErrorCode.USER_NOT_FOUND);
         }
 
         passwordResetTokenRepository.deleteByEmail(email);
 
-        String code = generateCode();
+        String code = verificationCodeSupport.generateCode();
         LocalDateTime now = LocalDateTime.now();
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
-                .expiresAt(now.plusMinutes(securityProperties.login().lockMinutes()))
+                .verified(false)
+                .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
                 .createdAt(now)
                 .attemptCount(0)
                 .build();
@@ -62,15 +59,31 @@ public class PasswordResetService {
         sendMail(email, code);
     }
 
+    @Transactional(noRollbackFor = ValidationException.class)
+    public void verifyResetCode(String email, String code) {
+        verificationCodeSupport.validateEmail(email);
+        verificationCodeSupport.validateCode(code, ErrorCode.INVALID_PASSWORD_RESET_CODE);
+
+        PasswordResetToken token = passwordResetTokenRepository
+                .findTopByEmailOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE));
+
+        verificationCodeSupport.verifyCodeAndMarkVerified(
+                token,
+                code,
+                LocalDateTime.now(),
+                ErrorCode.INVALID_PASSWORD_RESET_CODE,
+                ErrorCode.PASSWORD_RESET_EXPIRED,
+                securityProperties.login().maxFailedAttempts(),
+                securityProperties.login().lockMinutes(),
+                true);
+    }
+
     @Transactional
     public void resetPassword(String email, String code, String password, String passwordConfirm) {
-        validateEmail(email);
-        if (code == null || code.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
-        }
-        if (password == null || password.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD);
-        }
+        verificationCodeSupport.validateEmail(email);
+        verificationCodeSupport.validateCode(code, ErrorCode.INVALID_PASSWORD_RESET_CODE);
+
         if (!password.equals(passwordConfirm)) {
             throw new ValidationException(ErrorCode.PASSWORD_MISMATCH);
         }
@@ -86,10 +99,11 @@ public class PasswordResetService {
         if (token.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
         }
+        if (!token.isVerified()) {
+            throw new ValidationException(ErrorCode.PASSWORD_RESET_NOT_VERIFIED);
+        }
         if (!token.getCode().equals(code)) {
-            throw new ValidationException(
-                    ErrorCode.INVALID_PASSWORD_RESET_CODE,
-                    increaseAttemptOrBlockAndGetMessage(token, now));
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
         }
 
         UserInfo userInfo = userRepository.findByEmail(email)
@@ -98,17 +112,6 @@ public class PasswordResetService {
         passwordResetTokenRepository.deleteByEmail(email);
     }
 
-    private String increaseAttemptOrBlockAndGetMessage(PasswordResetToken token, LocalDateTime now) {
-        int nextAttempt = token.getAttemptCount() + 1;
-        if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
-            token.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
-            token.setAttemptCount(0);
-            return ATTEMPT_EXCEEDED_MESSAGE;
-        }
-        token.setAttemptCount(nextAttempt);
-        int remainingAttempts = securityProperties.login().maxFailedAttempts() - nextAttempt;
-        return "인증에 실패했습니다. 남은 시도 횟수: " + remainingAttempts + "회";
-    }
 
 
     private void sendMail(String email, String code) {
@@ -124,20 +127,5 @@ public class PasswordResetService {
             log.warn("Failed to send password reset email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
-    }
-
-    private void validateEmail(String email) {
-        if (email == null || email.isBlank()) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL);
-        }
-    }
-
-    private String generateCode() {
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(securityProperties.login().codeLength());
-        for (int i = 0; i < securityProperties.login().codeLength(); i++) {
-            sb.append(random.nextInt(10));
-        }
-        return sb.toString();
     }
 }

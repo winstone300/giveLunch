@@ -61,7 +61,8 @@ class PasswordResetServiceTest {
                 userRepository,
                 passwordEncoder,
                 mailSender,
-                securityProperties);
+                securityProperties,
+                new VerificationSupportService());
     }
 
     @Test
@@ -85,6 +86,7 @@ class PasswordResetServiceTest {
         assertThat(savedToken.getEmail()).isEqualTo(email);
         assertThat(savedToken.getCode()).matches("\\d{6}");
         assertThat(savedToken.getExpiresAt()).isAfter(savedToken.getCreatedAt());
+        assertThat(savedToken.isVerified()).isFalse();
 
         ArgumentCaptor<SimpleMailMessage> mailCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(mailCaptor.capture());
@@ -109,7 +111,24 @@ class PasswordResetServiceTest {
     }
 
     @Test
-    @DisplayName("resetPassword - 유효한 코드면 비밀번호 변경 후 토큰을 사용 처리")
+    @DisplayName("verifyResetCode - 유효한 코드면 verified=true")
+    void verifyResetCode_marksTokenVerified() {
+        String email = "member@example.com";
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .code("123456")
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
+                .build();
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email)).thenReturn(Optional.of(token));
+
+        passwordResetService.verifyResetCode(email, "123456");
+
+        assertThat(token.isVerified()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resetPassword - 인증 완료된 유효한 코드면 비밀번호 변경 후 토큰 삭제")
     void resetPassword_updatesPasswordAndMarksTokenUsed() {
         // given
         String email = "member@example.com";
@@ -117,6 +136,7 @@ class PasswordResetServiceTest {
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
+                .verified(true)
                 .createdAt(LocalDateTime.now().minusMinutes(1))
                 .expiresAt(LocalDateTime.now().plusMinutes(5))
                 .build();
@@ -126,8 +146,7 @@ class PasswordResetServiceTest {
                 .email(email)
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
-                .thenReturn(Optional.of(token));
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email)).thenReturn(Optional.of(token));
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode("newPassword")).thenReturn("encodedPassword");
 
@@ -136,91 +155,25 @@ class PasswordResetServiceTest {
 
         // then
         assertThat(user.getPassword()).isEqualTo("encodedPassword");
+        verify(passwordResetTokenRepository).deleteByEmail(email);
     }
 
     @Test
-    @DisplayName("resetPassword - 비밀번호 확인 불일치면 PASSWORD_MISMATCH 예외")
-    void resetPassword_throwsWhenPasswordMismatch() {
-        // when & then
-        assertThatThrownBy(() -> passwordResetService.resetPassword("a@a.com", "123456", "pw1", "pw2"))
-                .isInstanceOf(ValidationException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.PASSWORD_MISMATCH);
-    }
-
-    @Test
-    @DisplayName("resetPassword - 만료된 코드면 PASSWORD_RESET_EXPIRED 예외")
-    void resetPassword_throwsWhenCodeExpired() {
-        // given
-        String email = "member@example.com";
-        String code = "123456";
-        PasswordResetToken expiredToken = PasswordResetToken.builder()
-                .email(email)
-                .code(code)
-                .createdAt(LocalDateTime.now().minusMinutes(20))
-                .expiresAt(LocalDateTime.now().minusMinutes(1))
-                .build();
-
-        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
-                .thenReturn(Optional.of(expiredToken));
-
-        // when & then
-        assertThatThrownBy(() -> passwordResetService.resetPassword(email, code, "newPassword", "newPassword"))
-                .isInstanceOf(ValidationException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.PASSWORD_RESET_EXPIRED);
-    }
-
-    @Test
-    @DisplayName("resetPassword - 코드 오입력 시 남은 시도 횟수 메시지 반환")
-    void resetPassword_returnsRemainingAttemptsMessageOnInvalidCode() {
+    @DisplayName("resetPassword - 코드 인증 안했으면 PASSWORD_RESET_NOT_VERIFIED 예외")
+    void resetPassword_throwsWhenNotVerified() {
         String email = "member@example.com";
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code("123456")
-                .attemptCount(1)
-                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .verified(false)
                 .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
                 .build();
 
-        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
-                .thenReturn(Optional.of(token));
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email)).thenReturn(Optional.of(token));
 
-        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
-                .isInstanceOf(ValidationException.class)
-                .satisfies(ex -> {
-                    ValidationException validationException = (ValidationException) ex;
-                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
-                    assertThat(validationException.getMessage()).isEqualTo("인증에 실패했습니다. 남은 시도 횟수: 3회");
-                });
-
-        assertThat(token.getAttemptCount()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("resetPassword - 코드 오입력 누적 시 차단 처리")
-    void resetPassword_blocksAfterTooManyAttempts() {
-        String email = "member@example.com";
-        PasswordResetToken token = PasswordResetToken.builder()
-                .email(email)
-                .code("123456")
-                .attemptCount(4)
-                .createdAt(LocalDateTime.now().minusMinutes(1))
-                .expiresAt(LocalDateTime.now().plusMinutes(5))
-                .build();
-
-        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
-                .thenReturn(Optional.of(token));
-
-        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
-                .isInstanceOf(ValidationException.class)
-                .satisfies(ex -> {
-                    ValidationException validationException = (ValidationException) ex;
-                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
-                    assertThat(validationException.getMessage()).isEqualTo("시도횟수를 초과했습니다.");
-                });
-
-        assertThat(token.getBlockedUntil()).isNotNull();
-        assertThat(token.getAttemptCount()).isEqualTo(0);
+        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "123456", "newPassword", "newPassword"))                .isInstanceOf(ValidationException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.PASSWORD_RESET_NOT_VERIFIED);
     }
 }

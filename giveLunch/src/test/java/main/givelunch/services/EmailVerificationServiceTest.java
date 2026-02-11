@@ -15,6 +15,7 @@ import main.givelunch.exception.ValidationException;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import main.givelunch.services.login.EmailVerificationService;
+import main.givelunch.services.login.VerificationSupportService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,9 @@ class EmailVerificationServiceTest {
     @Mock
     private JavaMailSender mailSender;
 
+    @Mock
+    private VerificationSupportService verificationSupportService;
+
     @InjectMocks
     private EmailVerificationService emailVerificationService;
 
@@ -48,6 +52,7 @@ class EmailVerificationServiceTest {
         String email = "user@example.com";
         String username = "no-reply@example.com";
         when(userRepository.existsByEmail(email)).thenReturn(false);
+        when(verificationSupportService.generateCode()).thenReturn("123456");
 
         ReflectionTestUtils.setField(emailVerificationService, "mailUsername", username);
 
@@ -60,6 +65,7 @@ class EmailVerificationServiceTest {
         assertThat(messageCaptor.getValue().getFrom()).isEqualTo(username);
         assertThat(messageCaptor.getValue().getTo()).containsExactly(email);
         verify(emailVerificationRepository).save(any());
+        verify(verificationSupportService).validateEmail(email);
     }
 
     @Test
@@ -81,8 +87,8 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("인증 코드 실패 시 남은 시도 횟수 메시지 반환")
-    void confirmVerification_returnsRemainingAttemptsMessageOnInvalidCode() {
+    @DisplayName("인증 코드 검증은 공통 지원 로직으로 위임")
+    void confirmVerification_delegatesToSharedVerifier() {
         EmailVerification verification = EmailVerification.builder()
                 .email("user@example.com")
                 .code("111111")
@@ -94,14 +100,17 @@ class EmailVerificationServiceTest {
         when(emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc("user@example.com"))
                 .thenReturn(Optional.of(verification));
 
-        assertThatThrownBy(() -> emailVerificationService.confirmVerification("user@example.com", "222222"))
-                .isInstanceOf(ValidationException.class)
-                .satisfies(ex -> {
-                    ValidationException validationException = (ValidationException) ex;
-                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-                    assertThat(validationException.getMessage()).isEqualTo("인증에 실패했습니다. 남은 시도 횟수: 4회");
-                });
-        assertThat(verification.getAttemptCount()).isEqualTo(1);
+        emailVerificationService.confirmVerification("user@example.com", "222222");
+
+        verify(verificationSupportService).verifyCodeAndMarkVerified(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(Integer.class),
+                any(Integer.class),
+                any(Boolean.class));
     }
 
     @Test
