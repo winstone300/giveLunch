@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class EmailVerificationService {
     private final SecurityProperties securityProperties;
-    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
     private static final Logger logger = LoggerFactory.getLogger(EmailVerificationService.class);
 
     private final EmailVerificationRepository emailVerificationRepository;
@@ -74,8 +73,6 @@ public class EmailVerificationService {
                 LocalDateTime.now(),
                 ErrorCode.INVALID_EMAIL_VERIFICATION_CODE,
                 ErrorCode.INVALID_EMAIL_VERIFICATION_CODE,
-                MAX_VERIFY_ATTEMPTS,
-                BLOCK_MINUTES,
                 true);
     }
 

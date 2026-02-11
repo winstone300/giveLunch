@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDateTime;
 import main.givelunch.entities.EmailVerification;
 import main.givelunch.entities.UserInfo;
+import main.givelunch.model.Role;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -105,6 +106,7 @@ class LoginControllerIntegrationTest {
                 .userName("lockedUser")
                 .password(passwordEncoder.encode("password123"))
                 .email("locked@example.com")
+                .role(Role.USER)
                 .build());
 
         for (int i = 0; i < 5; i++) {

@@ -47,11 +47,16 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(ValidationException e) {
-        return buildErrorResponse(e.getErrorCode());
+        return buildErrorResponse(e.getErrorCode(),e.getMessage());
     }
 
     private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode) {
         ErrorResponseDto response = new ErrorResponseDto(errorCode.getCode(), errorCode.getMessage());
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
+    private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode, String message) {
+        ErrorResponseDto response = new ErrorResponseDto(errorCode.getCode(), message);
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
 

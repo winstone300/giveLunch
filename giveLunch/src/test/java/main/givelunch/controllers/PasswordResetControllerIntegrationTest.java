@@ -213,8 +213,8 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "newPassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
-                .andExpect(model().attribute("error", "인증에 실패했습니다. 남은 시도 횟수: 4회"));
+                .andExpect(view().name("login/reset-password"))
+                .andExpect(model().attribute("error", "비밀번호 재설정 코드가 올바르지 않습니다."));
     }
 
     @Test

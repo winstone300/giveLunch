@@ -4,16 +4,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("VerificationCodeSupport")
 class VerificationSupportServiceTest {
+    private VerificationSupportService support;
 
-    private final VerificationSupportService support = new VerificationSupportService();
+    @BeforeEach
+    void setUp() {
+        SecurityProperties securityProperties = new SecurityProperties(
+                List.of(),
+                List.of("/admin/**"),
+                new SecurityProperties.LoginProperties(5, 15,6)
+        );
+        support = new VerificationSupportService(securityProperties);
+    }
+
 
     @Test
     @DisplayName("코드가 맞으면 verified=true로 변경하고 시도 정보를 초기화")
@@ -33,8 +46,6 @@ class VerificationSupportServiceTest {
                 LocalDateTime.now(),
                 ErrorCode.INVALID_PASSWORD_RESET_CODE,
                 ErrorCode.PASSWORD_RESET_EXPIRED,
-                5,
-                10,
                 true);
 
         assertThat(token.isVerified()).isTrue();
@@ -58,8 +69,6 @@ class VerificationSupportServiceTest {
                 LocalDateTime.now(),
                 ErrorCode.INVALID_PASSWORD_RESET_CODE,
                 ErrorCode.PASSWORD_RESET_EXPIRED,
-                5,
-                10,
                 true))
                 .isInstanceOf(ValidationException.class)
                 .extracting("errorCode")
@@ -85,8 +94,6 @@ class VerificationSupportServiceTest {
                 LocalDateTime.now(),
                 ErrorCode.INVALID_PASSWORD_RESET_CODE,
                 ErrorCode.PASSWORD_RESET_EXPIRED,
-                5,
-                10,
                 true))
                 .isInstanceOf(ValidationException.class)
                 .extracting("errorCode")

@@ -2,15 +2,21 @@ package main.givelunch.services.login;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.VerificationCode;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
+import org.springdoc.core.service.SecurityService;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class VerificationSupportService {
-    private static final int CODE_LENGTH = 6;
+    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
+
     private final SecureRandom random = new SecureRandom();
+    private final SecurityProperties securityProperties;
 
     public void validateEmail(String email) {
         if (email == null || email.isBlank()) {
@@ -25,8 +31,8 @@ public class VerificationSupportService {
     }
 
     public String generateCode() {
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
+        StringBuilder sb = new StringBuilder(securityProperties.login().codeLength());
+        for (int i = 0; i < securityProperties.login().codeLength(); i++) {
             sb.append(random.nextInt(10));
         }
         return sb.toString();
@@ -38,12 +44,10 @@ public class VerificationSupportService {
             LocalDateTime now,
             ErrorCode invalidCodeError,
             ErrorCode expiredCodeError,
-            int maxAttempts,
-            int blockMinutes,
             boolean rejectWhenAlreadyVerified
     ) {
         if (token.isBlocked(now)) {
-            throw new ValidationException(invalidCodeError);
+            throw new ValidationException(invalidCodeError, ATTEMPT_EXCEEDED_MESSAGE);
         }
         if (rejectWhenAlreadyVerified && token.isVerified()) {
             throw new ValidationException(invalidCodeError);
@@ -52,8 +56,9 @@ public class VerificationSupportService {
             throw new ValidationException(expiredCodeError);
         }
         if (!token.getCode().equals(inputCode)) {
-            increaseAttemptOrBlock(token, now, maxAttempts, blockMinutes);
-            throw new ValidationException(invalidCodeError);
+            throw new ValidationException(
+                    invalidCodeError,
+                    increaseAttemptOrBlock(token, now));
         }
 
         token.setVerified(true);
@@ -61,13 +66,16 @@ public class VerificationSupportService {
         token.setBlockedUntil(null);
     }
 
-    public void increaseAttemptOrBlock(VerificationCode token, LocalDateTime now, int maxAttempts, int blockMinutes) {
+    public String increaseAttemptOrBlock(VerificationCode token, LocalDateTime now) {
         int nextAttempt = token.getAttemptCount() + 1;
-        if (nextAttempt >= maxAttempts) {
-            token.setBlockedUntil(now.plusMinutes(blockMinutes));
+        if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
+            token.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
             token.setAttemptCount(0);
-            return;
+            return ATTEMPT_EXCEEDED_MESSAGE;
         }
         token.setAttemptCount(nextAttempt);
+
+        int remainingAttempts = securityProperties.login().maxFailedAttempts() - nextAttempt;
+        return "인증에 실패했습니다. 남은 시도 횟수: " + remainingAttempts + "회";
     }
 }

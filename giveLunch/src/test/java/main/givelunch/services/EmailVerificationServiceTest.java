@@ -8,14 +8,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import main.givelunch.entities.EmailVerification;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import main.givelunch.services.login.EmailVerificationService;
 import main.givelunch.services.login.VerificationSupportService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,8 +45,24 @@ class EmailVerificationServiceTest {
     @Mock
     private VerificationSupportService verificationSupportService;
 
-    @InjectMocks
     private EmailVerificationService emailVerificationService;
+
+    @BeforeEach
+    void setUp() {
+        SecurityProperties securityProperties = new SecurityProperties(
+                List.of(),
+                List.of("/admin/**"),
+                new SecurityProperties.LoginProperties(5, 15,6)
+        );
+        emailVerificationService = new EmailVerificationService(
+                securityProperties,
+                emailVerificationRepository,
+                userRepository,
+                mailSender,
+                verificationSupportService
+        );
+    }
+
 
     @Test
     @DisplayName("메일 전송 시 발신 주소는 설정된 메일 계정을 사용")
@@ -108,32 +127,6 @@ class EmailVerificationServiceTest {
                 any(),
                 any(),
                 any(),
-                any(Integer.class),
-                any(Integer.class),
                 any(Boolean.class));
-    }
-
-    @Test
-    @DisplayName("인증 시도 횟수 초과 상태면 초과 메시지 반환")
-    void confirmVerification_returnsExceededMessageWhenBlocked() {
-        EmailVerification verification = EmailVerification.builder()
-                .email("user@example.com")
-                .code("111111")
-                .verified(false)
-                .attemptCount(0)
-                .expiresAt(LocalDateTime.now().plusMinutes(5))
-                .createdAt(LocalDateTime.now())
-                .blockedUntil(LocalDateTime.now().plusMinutes(5))
-                .build();
-        when(emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc("user@example.com"))
-                .thenReturn(Optional.of(verification));
-
-        assertThatThrownBy(() -> emailVerificationService.confirmVerification("user@example.com", "222222"))
-                .isInstanceOf(ValidationException.class)
-                .satisfies(ex -> {
-                    ValidationException validationException = (ValidationException) ex;
-                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
-                    assertThat(validationException.getMessage()).isEqualTo("시도횟수를 초과했습니다.");
-                });
     }
 }

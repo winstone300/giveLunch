@@ -62,7 +62,7 @@ class PasswordResetServiceTest {
                 passwordEncoder,
                 mailSender,
                 securityProperties,
-                new VerificationSupportService());
+                new VerificationSupportService(securityProperties));
     }
 
     @Test

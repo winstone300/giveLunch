@@ -2,6 +2,7 @@ package main.givelunch.services.login;
 
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.exception.ErrorCode;
@@ -9,8 +10,6 @@ import main.givelunch.exception.ValidationException;
 import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -21,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PasswordResetService {
-    private static final int EXPIRE_MINUTES = 10;
-    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
+    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
 
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserRepository userRepository;
@@ -50,7 +49,7 @@ public class PasswordResetService {
                 .email(email)
                 .code(code)
                 .verified(false)
-                .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
+                .expiresAt(now.plusMinutes(securityProperties.login().lockMinutes()))
                 .createdAt(now)
                 .attemptCount(0)
                 .build();
@@ -74,8 +73,6 @@ public class PasswordResetService {
                 LocalDateTime.now(),
                 ErrorCode.INVALID_PASSWORD_RESET_CODE,
                 ErrorCode.PASSWORD_RESET_EXPIRED,
-                securityProperties.login().maxFailedAttempts(),
-                securityProperties.login().lockMinutes(),
                 true);
     }
 
