@@ -54,7 +54,7 @@ class PasswordResetServiceTest {
         SecurityProperties securityProperties = new SecurityProperties(
                 List.of(),
                 List.of("/admin/**"),
-                new SecurityProperties.LoginProperties(5, 15)
+                new SecurityProperties.LoginProperties(5, 15,6)
         );
         passwordResetService = new PasswordResetService(
                 passwordResetTokenRepository,

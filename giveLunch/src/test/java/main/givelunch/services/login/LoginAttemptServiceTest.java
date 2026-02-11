@@ -30,7 +30,7 @@ class LoginAttemptServiceTest {
         SecurityProperties securityProperties = new SecurityProperties(
                 List.of(),
                 List.of("/admin/**"),
-                new SecurityProperties.LoginProperties(5, 15)
+                new SecurityProperties.LoginProperties(5, 15,6)
         );
         loginAttemptService = new LoginAttemptService(userRepository, securityProperties);
     }
