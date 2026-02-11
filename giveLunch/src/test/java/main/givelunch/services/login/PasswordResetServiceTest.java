@@ -172,6 +172,32 @@ class PasswordResetServiceTest {
     }
 
     @Test
+    @DisplayName("resetPassword - 코드 오입력 시 남은 시도 횟수 메시지 반환")
+    void resetPassword_returnsRemainingAttemptsMessageOnInvalidCode() {
+        String email = "member@example.com";
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email(email)
+                .code("123456")
+                .attemptCount(1)
+                .createdAt(LocalDateTime.now().minusMinutes(1))
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .build();
+
+        when(passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc(email))
+                .thenReturn(Optional.of(token));
+
+        assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(ex -> {
+                    ValidationException validationException = (ValidationException) ex;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+                    assertThat(validationException.getMessage()).isEqualTo("인증에 실패했습니다. 남은 시도 횟수: 3회");
+                });
+
+        assertThat(token.getAttemptCount()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("resetPassword - 코드 오입력 누적 시 차단 처리")
     void resetPassword_blocksAfterTooManyAttempts() {
         String email = "member@example.com";
@@ -188,8 +214,11 @@ class PasswordResetServiceTest {
 
         assertThatThrownBy(() -> passwordResetService.resetPassword(email, "999999", "newPassword", "newPassword"))
                 .isInstanceOf(ValidationException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+                .satisfies(ex -> {
+                    ValidationException validationException = (ValidationException) ex;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+                    assertThat(validationException.getMessage()).isEqualTo("시도횟수를 초과했습니다.");
+                });
 
         assertThat(token.getBlockedUntil()).isNotNull();
         assertThat(token.getAttemptCount()).isEqualTo(0);

@@ -22,22 +22,26 @@ public class LoginAttemptService {
     }
 
     @Transactional
-    public void onLoginFailure(String userName) {
-        userRepository.findByUserName(userName).ifPresent(user -> {
-            LocalDateTime now = LocalDateTime.now();
-            if (user.isCurrentlyLocked(now)) {
-                return;
-            }
+    public boolean onLoginFailure(String userName) {
+        return userRepository.findByUserName(userName)
+            .map(user -> {
+                LocalDateTime now = LocalDateTime.now();
+                if (user.isCurrentlyLocked(now)) {
+                    return true;
+                }
 
-            int nextCount = user.getFailedLoginCount() + 1;
-            user.setFailedLoginCount(nextCount);
+                int nextCount = user.getFailedLoginCount() + 1;
+                user.setFailedLoginCount(nextCount);
 
-            int maxFailedAttempts = securityProperties.login().maxFailedAttempts();
-            if (nextCount >= maxFailedAttempts) {
-                long lockMinutes = securityProperties.login().lockMinutes();
-                user.setLockedUntil(now.plusMinutes(lockMinutes));
-                user.setFailedLoginCount(0);
-            }
-        });
+                int maxFailedAttempts = securityProperties.login().maxFailedAttempts();
+                if (nextCount >= maxFailedAttempts) {
+                    long lockMinutes = securityProperties.login().lockMinutes();
+                    user.setLockedUntil(now.plusMinutes(lockMinutes));
+                    user.setFailedLoginCount(0);
+                    return true;
+                }
+                return false;
+            })
+            .orElse(false);     //user 없으면 false
     }
 }

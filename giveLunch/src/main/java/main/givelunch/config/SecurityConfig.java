@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.authentication.LockedException;
 
 @Configuration
 @EnableMethodSecurity
@@ -53,11 +54,13 @@ public class SecurityConfig {
                         })
                         .failureHandler((request, response, exception) -> {
                             String userName = request.getParameter("userName");
+                            boolean isLocked = exception instanceof LockedException;
                             if (userName != null && !userName.isBlank()) {
-                                loginAttemptService.onLoginFailure(userName);
+                                isLocked = isLocked || loginAttemptService.onLoginFailure(userName);
                             }
-                            response.sendRedirect("/login?error=true");
-                        })                        .permitAll()
+                            response.sendRedirect(isLocked ? "/login?locked=true" : "/login?error=true");
+                        })
+                        .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")

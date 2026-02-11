@@ -25,9 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class PasswordResetService {
-    private static final int CODE_LENGTH = 6;
-    private static final int EXPIRE_MINUTES = 10;
-    private static final Logger logger = LoggerFactory.getLogger(PasswordResetService.class);
+    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
 
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final UserRepository userRepository;
@@ -55,7 +53,7 @@ public class PasswordResetService {
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(email)
                 .code(code)
-                .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
+                .expiresAt(now.plusMinutes(securityProperties.login().lockMinutes()))
                 .createdAt(now)
                 .attemptCount(0)
                 .build();
@@ -83,14 +81,15 @@ public class PasswordResetService {
 
         LocalDateTime now = LocalDateTime.now();
         if (token.isBlocked(now)) {
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE, ATTEMPT_EXCEEDED_MESSAGE);
         }
         if (token.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.PASSWORD_RESET_EXPIRED);
         }
         if (!token.getCode().equals(code)) {
-            increaseAttemptOrBlock(token, now);
-            throw new ValidationException(ErrorCode.INVALID_PASSWORD_RESET_CODE);
+            throw new ValidationException(
+                    ErrorCode.INVALID_PASSWORD_RESET_CODE,
+                    increaseAttemptOrBlockAndGetMessage(token, now));
         }
 
         UserInfo userInfo = userRepository.findByEmail(email)
@@ -99,15 +98,18 @@ public class PasswordResetService {
         passwordResetTokenRepository.deleteByEmail(email);
     }
 
-    private void increaseAttemptOrBlock(PasswordResetToken token, LocalDateTime now) {
+    private String increaseAttemptOrBlockAndGetMessage(PasswordResetToken token, LocalDateTime now) {
         int nextAttempt = token.getAttemptCount() + 1;
         if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
             token.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
             token.setAttemptCount(0);
-            return;
+            return ATTEMPT_EXCEEDED_MESSAGE;
         }
         token.setAttemptCount(nextAttempt);
+        int remainingAttempts = securityProperties.login().maxFailedAttempts() - nextAttempt;
+        return "인증에 실패했습니다. 남은 시도 횟수: " + remainingAttempts + "회";
     }
+
 
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -115,11 +117,11 @@ public class PasswordResetService {
         message.setTo(email);
         message.setSubject("GiveLunch 비밀번호 재설정 코드");
         message.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "
-                + EXPIRE_MINUTES + "분 내에 입력해주세요.");
+                + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
         try {
             mailSender.send(message);
         } catch (MailException e) {
-            logger.warn("Failed to send password reset email to {}", email, e);
+            log.warn("Failed to send password reset email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
     }
@@ -132,8 +134,8 @@ public class PasswordResetService {
 
     private String generateCode() {
         SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
+        StringBuilder sb = new StringBuilder(securityProperties.login().codeLength());
+        for (int i = 0; i < securityProperties.login().codeLength(); i++) {
             sb.append(random.nextInt(10));
         }
         return sb.toString();
