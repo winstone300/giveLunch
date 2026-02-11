@@ -77,6 +77,10 @@
         <h1>로그인</h1>
         <p class="sub">계정으로 로그인해서 계속 진행하세요.</p>
 
+        <div th:if="${param.locked}" class="error-msg">
+            시도횟수를 초과했습니다.
+        </div>
+
         <div th:if="${param.error}" class="error-msg">
             아이디 또는 비밀번호가 일치하지 않습니다.
         </div>

@@ -98,6 +98,31 @@ class LoginControllerIntegrationTest {
         assertThat(userRepository.findByUserName("")).isEmpty();
     }
 
+    @Test
+    @DisplayName("POST /login: 로그인 시도 횟수 초과 시 locked 파라미터로 리다이렉트")
+    void loginFailureRedirectsWithLockedParamWhenAttemptsExceeded() throws Exception {
+        userRepository.save(UserInfo.builder()
+                .userName("lockedUser")
+                .password(passwordEncoder.encode("password123"))
+                .email("locked@example.com")
+                .build());
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/login")
+                            .with(csrf())
+                            .param("userName", "lockedUser")
+                            .param("password", "wrongPassword"))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("userName", "lockedUser")
+                        .param("password", "wrongPassword"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/login?locked=true"));
+    }
+
     private void createVerifiedEmail(String email) {
         LocalDateTime now = LocalDateTime.now();
         EmailVerification verification = EmailVerification.builder()

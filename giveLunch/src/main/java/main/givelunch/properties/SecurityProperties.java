@@ -21,7 +21,10 @@ public record SecurityProperties(
                 int maxFailedAttempts,
 
                 @DefaultValue("15")
-                long lockMinutes
+                int lockMinutes,
+
+                @DefaultValue("6")
+                int codeLength
         ) {
         }
 }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.EmailVerification;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
 import org.slf4j.Logger;
@@ -20,10 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationService {
-    private static final int CODE_LENGTH = 6;
-    private static final int EXPIRE_MINUTES = 10;
-    private static final int MAX_VERIFY_ATTEMPTS = 5;
-    private static final int BLOCK_MINUTES = 10;
+    private final SecurityProperties securityProperties;
+    private static final String ATTEMPT_EXCEEDED_MESSAGE = "시도횟수를 초과했습니다.";
     private static final Logger logger = LoggerFactory.getLogger(EmailVerificationService.class);
 
     private final EmailVerificationRepository emailVerificationRepository;
@@ -47,7 +46,7 @@ public class EmailVerificationService {
                 .email(email)
                 .code(code)
                 .verified(false)
-                .expiresAt(now.plusMinutes(EXPIRE_MINUTES))
+                .expiresAt(now.plusMinutes(securityProperties.login().lockMinutes()))
                 .createdAt(now)
                 .attemptCount(0)
                 .build();
@@ -69,15 +68,16 @@ public class EmailVerificationService {
 
         LocalDateTime now = LocalDateTime.now();
         if (latest.isBlocked(now)) {
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE, ATTEMPT_EXCEEDED_MESSAGE);
         }
         if (latest.isVerified() || latest.getExpiresAt().isBefore(now)) {
             throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
         }
 
         if (!latest.getCode().equals(code)) {
-            increaseAttemptOrBlock(latest, now);
-            throw new ValidationException(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+            throw new ValidationException(
+                    ErrorCode.INVALID_EMAIL_VERIFICATION_CODE,
+                    increaseAttemptOrBlockAndGetMessage(latest, now));
         }
 
         latest.setVerified(true);
@@ -85,14 +85,17 @@ public class EmailVerificationService {
         latest.setBlockedUntil(null);
     }
 
-    private void increaseAttemptOrBlock(EmailVerification verification, LocalDateTime now) {
+    private String increaseAttemptOrBlockAndGetMessage(EmailVerification verification, LocalDateTime now) {
         int nextAttempt = verification.getAttemptCount() + 1;
-        if (nextAttempt >= MAX_VERIFY_ATTEMPTS) {
-            verification.setBlockedUntil(now.plusMinutes(BLOCK_MINUTES));
+        if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
+            verification.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
             verification.setAttemptCount(0);
-            return;
+            return ATTEMPT_EXCEEDED_MESSAGE;
         }
+
         verification.setAttemptCount(nextAttempt);
+        int remainingAttempts = securityProperties.login().maxFailedAttempts() - nextAttempt;
+        return "인증에 실패했습니다. 남은 시도 횟수: " + remainingAttempts + "회";
     }
 
     private void sendMail(String email, String code) {
@@ -101,7 +104,7 @@ public class EmailVerificationService {
         message.setTo(email);
         message.setSubject("GiveLunch 회원가입 이메일 인증번호");
         message.setText("회원가입을 위한 이메일 인증번호는 [" + code + "] 입니다. "
-                + EXPIRE_MINUTES + "분 내에 입력해주세요.");
+                + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
         try {
             mailSender.send(message);
         } catch (MailException e) {
@@ -118,8 +121,8 @@ public class EmailVerificationService {
 
     private String generateCode() {
         SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(CODE_LENGTH);
-        for (int i = 0; i < CODE_LENGTH; i++) {
+        StringBuilder sb = new StringBuilder(securityProperties.login().codeLength());
+        for (int i = 0; i < securityProperties.login().codeLength(); i++) {
             sb.append(random.nextInt(10));
         }
         return sb.toString();

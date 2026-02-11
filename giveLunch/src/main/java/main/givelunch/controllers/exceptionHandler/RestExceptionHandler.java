@@ -49,15 +49,22 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(ValidationException e) {
-        return buildValidationErrorResponse(e.getErrorCode(), Map.of());
+        return buildValidationErrorResponse(e.getErrorCode(), e.getMessage(), Map.of());
     }
 
     private ResponseEntity<Map<String, Object>> buildValidationErrorResponse(
             ErrorCode errorCode,
             Map<String, String> fieldErrors) {
+        return buildValidationErrorResponse(errorCode, errorCode.getMessage(), fieldErrors);
+    }
+
+    private ResponseEntity<Map<String, Object>> buildValidationErrorResponse(
+            ErrorCode errorCode,
+            String message,
+            Map<String, String> fieldErrors) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", errorCode.getCode());
-        response.put("message", errorCode.getMessage());
+        response.put("message", message);
         response.put("fields", fieldErrors);
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }

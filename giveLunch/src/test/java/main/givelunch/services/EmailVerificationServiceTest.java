@@ -81,8 +81,8 @@ class EmailVerificationServiceTest {
     }
 
     @Test
-    @DisplayName("인증 코드 오입력 누적 시 attemptCount 증가")
-    void confirmVerification_increasesAttemptCountOnInvalidCode() {
+    @DisplayName("인증 코드 실패 시 남은 시도 횟수 메시지 반환")
+    void confirmVerification_returnsRemainingAttemptsMessageOnInvalidCode() {
         EmailVerification verification = EmailVerification.builder()
                 .email("user@example.com")
                 .code("111111")
@@ -96,8 +96,35 @@ class EmailVerificationServiceTest {
 
         assertThatThrownBy(() -> emailVerificationService.confirmVerification("user@example.com", "222222"))
                 .isInstanceOf(ValidationException.class)
-                .extracting("errorCode")
-                .isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+                .satisfies(ex -> {
+                    ValidationException validationException = (ValidationException) ex;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+                    assertThat(validationException.getMessage()).isEqualTo("인증에 실패했습니다. 남은 시도 횟수: 4회");
+                });
         assertThat(verification.getAttemptCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("인증 시도 횟수 초과 상태면 초과 메시지 반환")
+    void confirmVerification_returnsExceededMessageWhenBlocked() {
+        EmailVerification verification = EmailVerification.builder()
+                .email("user@example.com")
+                .code("111111")
+                .verified(false)
+                .attemptCount(0)
+                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .createdAt(LocalDateTime.now())
+                .blockedUntil(LocalDateTime.now().plusMinutes(5))
+                .build();
+        when(emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc("user@example.com"))
+                .thenReturn(Optional.of(verification));
+
+        assertThatThrownBy(() -> emailVerificationService.confirmVerification("user@example.com", "222222"))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(ex -> {
+                    ValidationException validationException = (ValidationException) ex;
+                    assertThat(validationException.getErrorCode()).isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+                    assertThat(validationException.getMessage()).isEqualTo("시도횟수를 초과했습니다.");
+                });
     }
 }
