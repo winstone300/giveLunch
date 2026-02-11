@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EmailVerificationRepository extends JpaRepository<EmailVerification, Long> {
-    Optional<EmailVerification> findTopByEmailAndCodeOrderByCreatedAtDesc(String email, String code);
     Optional<EmailVerification> findTopByEmailOrderByCreatedAtDesc(String email);
     boolean existsByEmailAndVerifiedTrueAndExpiresAtAfter(String email, LocalDateTime now);
     void deleteByEmail(String email);

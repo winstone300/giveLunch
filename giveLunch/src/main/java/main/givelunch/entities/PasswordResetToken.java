@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "password_reset_tokens")
@@ -20,32 +21,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Builder
-public class PasswordResetToken {
+@SuperBuilder
+public class PasswordResetToken extends VerificationCode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, length = 100)
-    private String email;
-
-    @Column(nullable = false, length = 10)
-    private String code;
-
-    @Column(nullable = false)
-    private LocalDateTime expiresAt;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private int attemptCount = 0;
-
-    @Column
-    private LocalDateTime blockedUntil;
-
-    public boolean isBlocked(LocalDateTime now) {
-        return blockedUntil != null && blockedUntil.isAfter(now);
-    }
 }

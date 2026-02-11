@@ -2,6 +2,7 @@ package main.givelunch.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -21,12 +22,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = "management.health.mail.enabled=false")
@@ -56,11 +59,11 @@ class PasswordResetControllerIntegrationTest {
     void resetViewsRender() throws Exception {
         mockMvc.perform(get("/forgot-password"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"));
+                .andExpect(view().name("login/forgot-password"));
 
         mockMvc.perform(get("/reset-password"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"));
+                .andExpect(view().name("login/reset-password"));
     }
 
     @Test
@@ -95,8 +98,32 @@ class PasswordResetControllerIntegrationTest {
                         .param("userName", "missing")
                         .param("email", "missing@example.com"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"))
+                .andExpect(view().name("login/forgot-password"))
                 .andExpect(model().attribute("error", "아이디 또는 이메일이 올바르지 않습니다."));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("POST /reset-password/verify: 코드 인증 성공 시 verified=true")
+    void verifyResetCodeMarksAsVerified() throws Exception {
+        passwordResetTokenRepository.save(PasswordResetToken.builder()
+                .email("verify-reset@example.com")
+                .code("123456")
+                .verified(false)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        mockMvc.perform(post("/reset-password/verify")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"verify-reset@example.com\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("코드 인증이 완료되었습니다."));
+
+        PasswordResetToken verified = passwordResetTokenRepository.findTopByEmailOrderByCreatedAtDesc("verify-reset@example.com")
+                .orElseThrow();
+        assertThat(verified.isVerified()).isTrue();
     }
 
     @Test
@@ -113,6 +140,7 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset2@example.com")
                 .code("654321")
+                .verified(true)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -141,7 +169,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "different"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 확인이 일치하지 않습니다."));
     }
 
@@ -155,7 +183,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("userName", "")
                         .param("email", "reset@example.com"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/forgotPassword"))
+                .andExpect(view().name("login/forgot-password"))
                 .andExpect(model().attribute("error", "아이디 또는 이메일이 올바르지 않습니다."));
     }
 
@@ -173,6 +201,7 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset3@example.com")
                 .code("111111")
+                .verified(true)
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -190,6 +219,36 @@ class PasswordResetControllerIntegrationTest {
 
     @Test
     @WithMockUser
+    @DisplayName("POST /reset-password: 코드 미인증 상태면 resetPassword 뷰와 안내 메시지 반환")
+    void resetPasswordReturnsResetViewWhenCodeNotVerified() throws Exception {
+        userRepository.save(UserInfo.builder()
+                .userName("resetuser5")
+                .password(passwordEncoder.encode("oldPassword"))
+                .email("reset5@example.com")
+                .role(Role.USER)
+                .build());
+
+        passwordResetTokenRepository.save(PasswordResetToken.builder()
+                .email("reset5@example.com")
+                .code("444444")
+                .verified(false)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        mockMvc.perform(post("/reset-password")
+                        .with(csrf())
+                        .param("email", "reset5@example.com")
+                        .param("code", "444444")
+                        .param("password", "newPassword")
+                        .param("passwordConfirm", "newPassword"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("login/reset-password"))
+                .andExpect(model().attribute("error", "비밀번호 재설정 코드 인증을 완료해주세요."));
+    }
+
+    @Test
+    @WithMockUser
     @DisplayName("POST /reset-password: 만료된 코드면 resetPassword 뷰와 만료 메시지 반환")
     void resetPasswordReturnsResetViewWhenCodeExpired() throws Exception {
         userRepository.save(UserInfo.builder()
@@ -202,6 +261,7 @@ class PasswordResetControllerIntegrationTest {
         passwordResetTokenRepository.save(PasswordResetToken.builder()
                 .email("reset4@example.com")
                 .code("333333")
+                .verified(true)
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .createdAt(LocalDateTime.now())
                 .build());
@@ -213,7 +273,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("password", "newPassword")
                         .param("passwordConfirm", "newPassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("login/resetPassword"))
+                .andExpect(view().name("login/reset-password"))
                 .andExpect(model().attribute("error", "비밀번호 재설정 코드가 만료되었습니다."));
     }
 

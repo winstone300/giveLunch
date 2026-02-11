@@ -6,12 +6,34 @@ import main.givelunch.controllers.LoginController;
 import main.givelunch.controllers.PasswordResetController;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
 @ControllerAdvice(assignableTypes = {LoginController.class, PasswordResetController.class})
 public class ViewExceptionHandler {
+
+
+    @ExceptionHandler(BindException.class)
+    public ModelAndView handleBindException(BindException e, HttpServletRequest request) {
+        String path = normalizePath(request);
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(fieldError -> fieldError.getDefaultMessage())
+                .orElse(ErrorCode.VALIDATION_ERROR.getMessage());
+
+        if (path.endsWith("/signup")) {
+            return buildView("login/signup", message);
+        }
+        if (path.endsWith("/forgot-password")) {
+            return buildView("login/forgot-password", "아이디 또는 이메일이 올바르지 않습니다.");
+        }
+        if (path.endsWith("/reset-password")) {
+            return buildView("login/reset-password", message);
+        }
+        return buildView("login/login", message);
+    }
 
     @ExceptionHandler(ValidationException.class)
     public ModelAndView handleValidationException(ValidationException e, HttpServletRequest request) {
@@ -25,10 +47,10 @@ public class ViewExceptionHandler {
             if (EnumSet.of(ErrorCode.USER_NOT_FOUND, ErrorCode.INVALID_EMAIL, ErrorCode.INVALID_USERNAME).contains(code)) {
                 message = "아이디 또는 이메일이 올바르지 않습니다.";
             }
-            return buildView("login/forgotPassword", message);
+            return buildView("login/forgot-password", message);
         }
         if (path.endsWith("/reset-password")) {
-            return buildView("login/resetPassword", e.getMessage());
+            return buildView("login/reset-password", e.getMessage());
         }
         return buildView("login/login", e.getMessage());
     }
