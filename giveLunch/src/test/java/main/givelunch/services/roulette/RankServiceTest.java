@@ -1,20 +1,27 @@
 package main.givelunch.services.roulette;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.mockito.Mockito.anyLong;
-import static org.mockito.Mockito.eq;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 import main.givelunch.dto.rankDto.RankEntryDto;
+import main.givelunch.properties.RankProperties;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.DefaultTypedTuple;
@@ -29,8 +36,18 @@ class RankServiceTest {
     @Mock
     private ZSetOperations<String, String> zSetOperations;
 
-    @InjectMocks
     private RankService rankService;
+
+    @BeforeEach
+    void setUp() {
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(redisTemplate, Clock.systemUTC(), rankProperties);
+    }
+
+    private void stubNoExpiredEvents() {
+        when(zSetOperations.rangeByScore(eq("roulette:food:rank:events"), anyDouble(), anyDouble()))
+                .thenReturn(Set.of());
+    }
 
     @Test
     @DisplayName("increment() - redis score가 null이면 1로 처리")
@@ -38,6 +55,7 @@ class RankServiceTest {
         // given
         String foodName = "비빔밥";
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        stubNoExpiredEvents();
         when(zSetOperations.incrementScore("roulette:food:rank", foodName, 1)).thenReturn(null);
 
         // when
@@ -54,6 +72,7 @@ class RankServiceTest {
         // given
         String foodName = "김치찌개";
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        stubNoExpiredEvents();
         when(zSetOperations.incrementScore("roulette:food:rank", foodName, 1)).thenReturn(5.0);
 
         // when
@@ -69,6 +88,7 @@ class RankServiceTest {
     void getTopRanks_normalizesLimitWhenLessThanOne() {
         // given
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        stubNoExpiredEvents();
         when(zSetOperations.reverseRangeWithScores(eq("roulette:food:rank"), anyLong(), anyLong()))
                 .thenReturn(Set.of(new DefaultTypedTuple<>("라면", 3.0)));
 
@@ -87,6 +107,7 @@ class RankServiceTest {
     void getTopRanks_returnsEmptyListWhenNoResult() {
         // given
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        stubNoExpiredEvents();
         when(zSetOperations.reverseRangeWithScores("roulette:food:rank", 0, 2)).thenReturn(null);
 
         // when
@@ -105,6 +126,7 @@ class RankServiceTest {
         tuples.add(new DefaultTypedTuple<>("돈까스", 7.0));
 
         when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        stubNoExpiredEvents();
         when(zSetOperations.reverseRangeWithScores("roulette:food:rank", 0, 1)).thenReturn(tuples);
 
         // when
@@ -116,5 +138,40 @@ class RankServiceTest {
         assertThat(result.get(0).count()).isEqualTo(0L);
         assertThat(result.get(1).name()).isEqualTo("돈까스");
         assertThat(result.get(1).count()).isEqualTo(7L);
+    }
+
+    @Test
+    @DisplayName("increment()요청시 24시간 지난 이벤트를 제거하고 점수를 감소시킨다")
+    void increment_removesExpiredEventsBeforeScoring() {
+        // given
+        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(redisTemplate, Clock.fixed(fixedTime, ZoneOffset.UTC), rankProperties);
+
+        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        when(zSetOperations.rangeByScore("roulette:food:rank:events", 0, cutoffEpochSeconds))
+                .thenReturn(Set.of("uuid-1:김밥", "uuid-2:김밥", "uuid-3:라면"));
+        when(zSetOperations.incrementScore("roulette:food:rank", "김밥", -2)).thenReturn(0.0);
+        when(zSetOperations.incrementScore("roulette:food:rank", "라면", -1)).thenReturn(4.0);
+        when(zSetOperations.incrementScore("roulette:food:rank", "제육볶음", 1)).thenReturn(3.0);
+
+        // when
+        RankEntryDto result = rankService.increment("제육볶음");
+
+        // then
+        ArgumentCaptor<Object> expiredMemberCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(zSetOperations).remove(
+                eq("roulette:food:rank:events"),
+                expiredMemberCaptor.capture(),
+                expiredMemberCaptor.capture(),
+                expiredMemberCaptor.capture()
+        );
+        assertThat(expiredMemberCaptor.getAllValues())
+                .containsExactlyInAnyOrder("uuid-1:김밥", "uuid-2:김밥", "uuid-3:라면");
+        verify(zSetOperations).incrementScore("roulette:food:rank", "김밥", -2);
+        verify(zSetOperations).remove("roulette:food:rank", "김밥");
+        verify(zSetOperations).incrementScore("roulette:food:rank", "라면", -1);
+        assertThat(result.count()).isEqualTo(3L);
     }
 }
