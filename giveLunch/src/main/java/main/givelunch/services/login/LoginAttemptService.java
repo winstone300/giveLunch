@@ -1,6 +1,7 @@
 package main.givelunch.services.login;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.UserRepository;
@@ -43,5 +44,18 @@ public class LoginAttemptService {
                 return false;
             })
             .orElse(false);     //user 없으면 false
+    }
+
+    @Transactional(readOnly = true)
+    public long getRemainingLockSeconds(String userName) {
+        return userRepository.findByUserName(userName)
+                .map(user -> {
+                    LocalDateTime now = LocalDateTime.now();
+                    if (!user.isCurrentlyLocked(now)) {
+                        return 0L;
+                    }
+                    return Duration.between(now, user.getLockedUntil()).getSeconds();
+                })
+                .orElse(0L);
     }
 }

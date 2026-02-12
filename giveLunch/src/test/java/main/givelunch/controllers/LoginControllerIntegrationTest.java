@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -122,7 +123,7 @@ class LoginControllerIntegrationTest {
                         .param("userName", "lockedUser")
                         .param("password", "wrongPassword"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?locked=true"));
+                .andExpect(redirectedUrlPattern("/login?locked=true&remainingSeconds=*"));
     }
 
     private void createVerifiedEmail(String email) {

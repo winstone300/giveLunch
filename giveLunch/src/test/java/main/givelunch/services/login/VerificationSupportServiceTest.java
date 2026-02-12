@@ -102,4 +102,27 @@ class VerificationSupportServiceTest {
         assertThat(token.getAttemptCount()).isZero();
         assertThat(token.getBlockedUntil()).isNotNull();
     }
+
+    @Test
+    @DisplayName("block 상태에서 재시도 시 남은 인증 시간을 메시지에 포함")
+    void verifyCodeAndMarkVerified_containsRemainingTimeWhenBlocked() {
+        LocalDateTime now = LocalDateTime.now();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .email("member@example.com")
+                .code("123456")
+                .blockedUntil(now.plusSeconds(90))
+                .expiresAt(now.plusMinutes(5))
+                .createdAt(now)
+                .build();
+
+        assertThatThrownBy(() -> support.verifyCodeAndMarkVerified(
+                token,
+                "123456",
+                now,
+                ErrorCode.INVALID_PASSWORD_RESET_CODE,
+                ErrorCode.PASSWORD_RESET_EXPIRED,
+                true))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("남은 인증 시간:");
+    }
 }

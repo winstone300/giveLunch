@@ -55,10 +55,18 @@ public class SecurityConfig {
                         .failureHandler((request, response, exception) -> {
                             String userName = request.getParameter("userName");
                             boolean isLocked = exception instanceof LockedException;
+                            long remainingSeconds = 0;
                             if (userName != null && !userName.isBlank()) {
                                 isLocked = isLocked || loginAttemptService.onLoginFailure(userName);
+                                if (isLocked) {
+                                    remainingSeconds = loginAttemptService.getRemainingLockSeconds(userName);
+                                }
                             }
-                            response.sendRedirect(isLocked ? "/login?locked=true" : "/login?error=true");
+                            if (isLocked) {
+                                response.sendRedirect("/login?locked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
+                                return;
+                            }
+                            response.sendRedirect("/login?error=true");
                         })
                         .permitAll()
                 )
