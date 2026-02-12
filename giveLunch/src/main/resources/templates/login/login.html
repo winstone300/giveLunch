@@ -78,7 +78,7 @@
         <p class="sub">계정으로 로그인해서 계속 진행하세요.</p>
 
         <div th:if="${param.locked}" class="error-msg">
-            시도횟수를 초과했습니다.
+            시도횟수를 초과했습니다. 잠금 해제까지 <span id="lockRemainingText">남은 시간 계산 중...</span>
         </div>
 
         <div th:if="${param.error}" class="error-msg">
@@ -114,5 +114,41 @@
         </form>
     </div>
 </div>
+<script th:if="${param.locked}">
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        const textEl = document.getElementById('lockRemainingText');
+        if (!textEl) {
+            return;
+        }
+
+        let remainingSeconds = Number(params.get('remainingSeconds') || 0);
+
+        const formatTime = (seconds) => {
+            const safeSeconds = Math.max(seconds, 0);
+            const minutes = Math.floor(safeSeconds / 60);
+            const secs = safeSeconds % 60;
+            return `${minutes}분 ${secs}초`;
+        };
+
+        const render = () => {
+            textEl.textContent = formatTime(remainingSeconds);
+        };
+
+        render();
+
+        if (remainingSeconds <= 0) {
+            return;
+        }
+
+        const timer = setInterval(() => {
+            remainingSeconds -= 1;
+            render();
+            if (remainingSeconds <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    })();
+</script>
 </body>
 </html>

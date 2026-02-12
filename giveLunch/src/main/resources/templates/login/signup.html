@@ -151,7 +151,7 @@
                        placeholder="email@example.com" required/>
                 <button type="button" id="sendVerification">인증번호 보내기</button>
             </div>
-            <p class="hint">이메일로 발송된 인증번호를 입력해주세요.</p>
+            <p class="hint" id = "sendEmail">이메일로 발송된 인증번호를 입력해주세요.</p>
 
             <label for="emailCode">이메일 인증번호</label>
             <div class="inline-row">
@@ -178,6 +178,7 @@
 
     const emailInput = document.getElementById('email');
     const emailCodeInput = document.getElementById('emailCode');
+    const sendEl = document.getElementById('sendEmail');
     const statusEl = document.getElementById('emailStatus');
 
     const sendButton = document.getElementById('sendVerification');
@@ -200,14 +201,43 @@
         return data;
     };
 
+    let verificationTimer;
+
+    const startVerificationTimer = (initialSeconds) => {
+        clearInterval(verificationTimer);
+
+        let remainingSeconds = Math.max(Number(initialSeconds) || 0, 0);
+
+        const render = () => {
+            const minutes = Math.floor(remainingSeconds / 60);
+            const seconds = remainingSeconds % 60;
+            sendEl.textContent = `남은 인증 시간: ${minutes}분 ${seconds}초`;
+        };
+
+        render();
+
+        if (remainingSeconds <= 0) {
+            return;
+        }
+
+        verificationTimer = setInterval(() => {
+            remainingSeconds -= 1;
+            render();
+            if (remainingSeconds <= 0) {
+                clearInterval(verificationTimer);
+            }
+        }, 1000);
+    };
+
     sendButton.addEventListener('click', async () => {
         const email = emailInput.value.trim();
-        statusEl.textContent = '';
+        sendEl.textContent = '';
         try {
             const data = await request('/signup/email/send', { email });
-            statusEl.textContent = data.message;
+            sendEl.textContent = data.message;
+            startVerificationTimer(data.remainingSeconds);
         } catch (error) {
-            statusEl.textContent = error.message;
+            sendEl.textContent = error.message;
         }
     });
 

@@ -86,4 +86,16 @@ class LoginAttemptServiceTest {
         assertThat(user.getFailedLoginCount()).isZero();
         assertThat(user.getLockedUntil()).isNull();
     }
+
+    @Test
+    @DisplayName("잠금 상태면 남은 잠금 시간을 초 단위로 반환")
+    void getRemainingLockSeconds_returnsRemainingTime() {
+        UserInfo user = UserInfo.builder().userName("tester").failedLoginCount(0).build();
+        user.setLockedUntil(LocalDateTime.now().plusSeconds(120));
+        when(userRepository.findByUserName("tester")).thenReturn(Optional.of(user));
+
+        long remainingSeconds = loginAttemptService.getRemainingLockSeconds("tester");
+
+        assertThat(remainingSeconds).isGreaterThan(0);
+    }
 }

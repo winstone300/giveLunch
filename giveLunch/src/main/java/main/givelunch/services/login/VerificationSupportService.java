@@ -47,7 +47,7 @@ public class VerificationSupportService {
             boolean rejectWhenAlreadyVerified
     ) {
         if (token.isBlocked(now)) {
-            throw new ValidationException(invalidCodeError, ATTEMPT_EXCEEDED_MESSAGE);
+            throw new ValidationException(invalidCodeError, buildBlockedMessage(token, now));
         }
         if (rejectWhenAlreadyVerified && token.isVerified()) {
             throw new ValidationException(invalidCodeError);
@@ -71,11 +71,30 @@ public class VerificationSupportService {
         if (nextAttempt >= securityProperties.login().maxFailedAttempts()) {
             token.setBlockedUntil(now.plusMinutes(securityProperties.login().lockMinutes()));
             token.setAttemptCount(0);
-            return ATTEMPT_EXCEEDED_MESSAGE;
+            return buildBlockedMessage(token, now);
         }
         token.setAttemptCount(nextAttempt);
 
         int remainingAttempts = securityProperties.login().maxFailedAttempts() - nextAttempt;
         return "인증에 실패했습니다. 남은 시도 횟수: " + remainingAttempts + "회";
+    }
+
+    private String buildBlockedMessage(VerificationCode token, LocalDateTime now) {
+        long remainingSeconds = calculateRemainingSeconds(token.getBlockedUntil(), now);
+        return ATTEMPT_EXCEEDED_MESSAGE + " 남은 인증 시간: " + formatRemainingTime(remainingSeconds);
+    }
+
+    private long calculateRemainingSeconds(LocalDateTime lockedUntil, LocalDateTime now) {
+        if (lockedUntil == null || !lockedUntil.isAfter(now)) {
+            return 0;
+        }
+        return java.time.Duration.between(now, lockedUntil).getSeconds();
+    }
+
+    private String formatRemainingTime(long remainingSeconds) {
+        long safeSeconds = Math.max(remainingSeconds, 0);
+        long minutes = safeSeconds / 60;
+        long seconds = safeSeconds % 60;
+        return minutes + "분 " + seconds + "초";
     }
 }
