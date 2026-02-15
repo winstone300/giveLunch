@@ -3,6 +3,7 @@ package main.givelunch.repositories;
 import java.util.List;
 import java.util.Optional;
 import main.givelunch.entities.Food;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,4 +23,6 @@ public interface FoodRepository extends JpaRepository<Food, Long> {
             order by length(f.name) asc
             """)
     List<Food> findByNameContainingOrderByShortestName(@Param("name") String name, Pageable pageable);
+
+    Page<Food> findByNameContainingIgnoreCase(String name, Pageable pageable);
 }

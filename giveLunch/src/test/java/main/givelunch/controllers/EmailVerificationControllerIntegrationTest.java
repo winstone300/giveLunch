@@ -53,7 +53,7 @@ class EmailVerificationControllerIntegrationTest {
                         .content("{\"email\":\"newuser@example.com\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("인증번호를 이메일로 전송했습니다."))
-                .andExpect(jsonPath("$.remainingSeconds").value("900"));
+                .andExpect(jsonPath("$.remainingSeconds").value("600"));
 
         EmailVerification saved = emailVerificationRepository.findTopByEmailOrderByCreatedAtDesc("newuser@example.com")
                 .orElseThrow();

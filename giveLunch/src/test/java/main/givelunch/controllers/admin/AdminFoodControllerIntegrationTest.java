@@ -3,11 +3,11 @@ package main.givelunch.controllers.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
 import java.util.List;
@@ -47,18 +47,48 @@ class AdminFoodControllerIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("GET /api/admin/foods: 관리자 조회 시 음식 목록 반환")
-    void loadFoodsReturnsListForAdmin() throws Exception {
+    @DisplayName("GET /api/admin/foods: 관리자 조회 시 페이지 형태의 음식 목록 반환")
+    void loadFoodsReturnsPagedListForAdmin() throws Exception {
         mockMvc.perform(post("/api/admin/foods")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(buildFoodRequestJson("비빔밥", "한식", 450)))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/admin/foods"))
+        mockMvc.perform(get("/api/admin/foods")
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("비빔밥"))
-                .andExpect(jsonPath("$[0].category").value("한식"));
+                .andExpect(jsonPath("$.content[0].name").value("비빔밥"))
+                .andExpect(jsonPath("$.content[0].category").value("한식"))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.number").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /api/admin/foods: keyword 검색 시 이름 포함 항목만 반환")
+    void loadFoodsWithKeywordReturnsFilteredResult() throws Exception {
+        mockMvc.perform(post("/api/admin/foods")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildFoodRequestJson("김치찌개", "한식", 450)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/admin/foods")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildFoodRequestJson("파스타", "양식", 550)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/admin/foods")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("keyword", "김치"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("김치찌개"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test

@@ -3,6 +3,7 @@ package main.givelunch.services.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,22 +44,46 @@ class AdminServiceTest {
     private AdminService adminService;
 
     @Test
-    @DisplayName("loadFoods() - repository 결과를 FoodDto 리스트로 변환하여 반환")
-    void loadFoods_returnsFoodDtos() {
+    @DisplayName("loadFoods() - 키워드가 없으면 findAll(pageable)로 페이지 조회")
+    void loadFoods_withoutKeyword_returnsPagedResult() {
         // given
         FoodDto dto1 = FoodDto.builder().id(1L).name("비빔밥").category("한식").build();
         FoodDto dto2 = FoodDto.builder().id(2L).name("파스타").category("양식").build();
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "id"));
 
-        when(foodRepository.findAll(Sort.by(Sort.Direction.ASC, "id")))
-                .thenReturn(List.of(Food.from(dto1), Food.from(dto2)));
+        when(foodRepository.findAll(pageable))
+                .thenReturn(new PageImpl<>(List.of(Food.from(dto1), Food.from(dto2)), pageable, 2));
 
         // when
-        List<FoodDto> result = adminService.loadFoods();
+        Page<FoodDto> result = adminService.loadFoods(0, 10, " ");
 
         // then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("비빔밥");
-        assertThat(result.get(1).name()).isEqualTo("파스타");
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).name()).isEqualTo("비빔밥");
+        assertThat(result.getContent().get(1).name()).isEqualTo("파스타");
+        verify(foodRepository).findAll(pageable);
+        verify(foodRepository, never()).findByNameContainingIgnoreCase(anyString(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("loadFoods() - 키워드가 있으면 검색 페이지 조회")
+    void loadFoods_withKeyword_usesSearchRepositoryMethod() {
+        // given
+        FoodDto dto = FoodDto.builder().id(3L).name("김치찌개").category("한식").build();
+        Pageable pageable = PageRequest.of(1, 10, Sort.by(Sort.Direction.ASC, "id"));
+
+
+        when(foodRepository.findByNameContainingIgnoreCase("김치", pageable))
+                .thenReturn(new PageImpl<>(List.of(Food.from(dto)), pageable, 1));
+
+        // when
+        Page<FoodDto> result = adminService.loadFoods(1, 10, "김치");
+
+        // then
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).name()).isEqualTo("김치찌개");
+        verify(foodRepository).findByNameContainingIgnoreCase("김치", pageable);
+        verify(foodRepository, never()).findAll(any(Pageable.class));
     }
 
     @Test
