@@ -34,3 +34,9 @@ build/
 
 # Spring
 application-*.yml
+
+# nGrinder local artifacts
+**/giveLunch/perf/ngrinder/results/
+**/giveLunch/perf/ngrinder/reports/
+**/giveLunch/perf/ngrinder/*.log
+**/giveLunch/perf/ngrinder/local-*.properties
