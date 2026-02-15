@@ -1,16 +1,17 @@
 package main.givelunch.controllers.admin;
 
 import io.swagger.v3.oas.annotations.Operation;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.services.admin.AdminService;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,10 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminFoodController {
     private final AdminService adminService;
 
-    @Operation(summary = "음식 목록 조회", description = "관리자용 음식 목록을 조회")
+    @Operation(summary = "음식 목록 조회", description = "관리자용 음식 목록을 페이지 단위로 조회")
     @GetMapping
-    public List<FoodDto> loadFoods() {
-        return adminService.loadFoods();
+    public Page<FoodDto> loadFoods(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword
+    ) {
+        return adminService.loadFoods(page, size, keyword);
     }
 
     @Operation(summary = "음식 및 영양 정보 생성", description = "관리자 권한으로 음식과 영양 정보를 등록")

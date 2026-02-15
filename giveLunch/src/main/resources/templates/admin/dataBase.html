@@ -118,7 +118,33 @@
             margin-top: 12px;
             color: #64748b;
             font-size: 13px;
-        }.modal-overlay {
+        }
+        .list-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .list-controls input {
+            flex: 1;
+        }
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .pagination-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .empty-row {
+            text-align: center;
+            color: #64748b;
+            padding: 18px 12px;
+        }
+        .modal-overlay {
              position: fixed;
              inset: 0;
              background: rgba(15, 23, 42, 0.35);
@@ -274,6 +300,11 @@
 
     <section class="card">
         <h2>등록된 음식 목록</h2>
+        <div class="list-controls">
+            <input id="list-search-keyword" type="text" placeholder="이름으로 검색">
+            <button class="secondary" type="button" id="list-search-btn">검색</button>
+            <button class="secondary" type="button" id="list-search-reset-btn">초기화</button>
+        </div>
         <table>
             <thead>
             <tr>
@@ -284,6 +315,13 @@
             </thead>
             <tbody id="food-table-body"></tbody>
         </table>
+        <div class="pagination">
+            <div class="notice" id="list-page-info">0 / 0 페이지</div>
+            <div class="pagination-actions">
+                <button class="secondary" type="button" id="list-prev-btn">이전</button>
+                <button class="secondary" type="button" id="list-next-btn">다음</button>
+            </div>
+        </div>
         <div class="notice">표시되는 칼로리는 1회 제공량 기준입니다.</div>
     </section>
 </div>
@@ -310,6 +348,20 @@
     const searchResults = document.getElementById('search-results');
     const searchModal = document.getElementById('search-modal');
     const searchModalClose = document.getElementById('search-modal-close');
+    const listSearchKeyword = document.getElementById('list-search-keyword');
+    const listSearchButton = document.getElementById('list-search-btn');
+    const listSearchResetButton = document.getElementById('list-search-reset-btn');
+    const listPrevButton = document.getElementById('list-prev-btn');
+    const listNextButton = document.getElementById('list-next-btn');
+    const listPageInfo = document.getElementById('list-page-info');
+
+    const listState = {
+        page: 0,
+        size: 10,
+        keyword: '',
+        totalPages: 0,
+        totalElements: 0
+    };
 
     const fields = {
         id: document.getElementById('food-id'),
@@ -467,6 +519,14 @@
 
     const renderRows = (foods) => {
         tableBody.innerHTML = '';
+
+        if (!foods.length) {
+            const row = document.createElement('tr');
+            row.innerHTML = '<td class="empty-row" colspan="3">검색 결과가 없습니다.</td>';
+            tableBody.appendChild(row);
+            return;
+        }
+
         foods.forEach((food) => {
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -522,14 +582,40 @@
         });
     };
 
+    const updatePagination = () => {
+        const currentPage = listState.totalPages === 0 ? 0 : listState.page + 1;
+        listPageInfo.textContent = `${currentPage} / ${listState.totalPages} 페이지 · 총 ${listState.totalElements}건`;
+        listPrevButton.disabled = listState.page <= 0;
+        listNextButton.disabled = listState.page + 1 >= listState.totalPages;
+    };
+
     const loadFoods = async () => {
-        const resp = await fetch('/api/admin/foods');
+        const params = new URLSearchParams({
+            page: String(listState.page),
+            size: String(listState.size)
+        });
+        if (listState.keyword) {
+            params.set('keyword', listState.keyword);
+        }
+
+        const resp = await fetch(`/api/admin/foods?${params.toString()}`);
         if (!resp.ok) {
             formStatus.textContent = '목록을 불러오지 못했습니다.';
             return;
         }
         const data = await resp.json();
-        renderRows(data);
+
+        if (listState.page > 0 && data.totalPages > 0 && listState.page >= data.totalPages) {
+            listState.page = data.totalPages - 1;
+            await loadFoods();
+            return;
+        }
+
+        listState.totalPages = data.totalPages ?? 0;
+        listState.totalElements = data.totalElements ?? 0;
+        listState.page = data.number ?? 0;
+        renderRows(data.content ?? []);
+        updatePagination();
     };
 
     const loadNutrition = async (foodId) => {
@@ -569,8 +655,37 @@
         await loadFoods();
     });
 
+    const searchFoodList = async () => {
+        listState.keyword = listSearchKeyword.value.trim();
+        listState.page = 0;
+        await loadFoods();
+    };
+
+    const resetFoodListSearch = async () => {
+        listSearchKeyword.value = '';
+        listState.keyword = '';
+        listState.page = 0;
+        await loadFoods();
+    };
+
     document.getElementById('reset-btn').addEventListener('click', resetForm);
     searchButton.addEventListener('click', searchExternalFood);
+    listSearchButton.addEventListener('click', searchFoodList);
+    listSearchResetButton.addEventListener('click', resetFoodListSearch);
+    listPrevButton.addEventListener('click', async () => {
+        if (listState.page <= 0) {
+            return;
+        }
+        listState.page -= 1;
+        await loadFoods();
+    });
+    listNextButton.addEventListener('click', async () => {
+        if (listState.page + 1 >= listState.totalPages) {
+            return;
+        }
+        listState.page += 1;
+        await loadFoods();
+    });
     searchModalClose.addEventListener('click', closeSearchModal);
     searchModal.addEventListener('click', (event) => {
         if (event.target === searchModal) {
@@ -581,6 +696,12 @@
         if (event.key === 'Enter') {
             event.preventDefault();
             searchExternalFood();
+        }
+    });
+    listSearchKeyword.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchFoodList();
         }
     });
     document.addEventListener('keydown', (event) => {

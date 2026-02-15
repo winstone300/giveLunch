@@ -1,6 +1,5 @@
 package main.givelunch.services.admin;
 
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
@@ -8,6 +7,9 @@ import main.givelunch.entities.Food;
 import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.repositories.NutritionRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +20,17 @@ public class AdminService {
     private final FoodRepository foodRepository;
     private final NutritionRepository nutritionRepository;
 
-    public List<FoodDto> loadFoods(){
-        return foodRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
-                .stream()
-                .map(FoodDto::from)
-                .toList();
+    public Page<FoodDto> loadFoods(int page, int size, String keyword){
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id"));
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+
+        if (normalizedKeyword.isEmpty()) {
+            return foodRepository.findAll(pageable)
+                    .map(FoodDto::from);
+        }
+
+        return foodRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable)
+                .map(FoodDto::from);
     }
 
     public void deleteFoodsAndNutritions(Long id){

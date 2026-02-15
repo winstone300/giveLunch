@@ -82,7 +82,7 @@ class PasswordResetControllerIntegrationTest {
                         .param("userName", "resetuser")
                         .param("email", "reset@example.com"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/reset-password?remainingSeconds=900"));
+                .andExpect(redirectedUrl("/reset-password?remainingSeconds=600"));
 
         assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
         PasswordResetToken token = passwordResetTokenRepository.findAll().get(0);
