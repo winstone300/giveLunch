@@ -14,7 +14,7 @@ import org.springframework.web.servlet.ModelAndView;
 @ControllerAdvice(assignableTypes = {LoginController.class, PasswordResetController.class})
 public class ViewExceptionHandler {
 
-
+    // 폼 바인딩(@ModelAttribute) 단계에서 타입 변환/필드 바인딩 오류가 발생할 때 호출
     @ExceptionHandler(BindException.class)
     public ModelAndView handleBindException(BindException e, HttpServletRequest request) {
         String path = normalizePath(request);
@@ -35,6 +35,7 @@ public class ViewExceptionHandler {
         return buildView("login/login", message);
     }
 
+    // 입력 오류시 호출
     @ExceptionHandler(ValidationException.class)
     public ModelAndView handleValidationException(ValidationException e, HttpServletRequest request) {
         String path = normalizePath(request);
