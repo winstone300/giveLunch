@@ -20,7 +20,7 @@ class RestExceptionHandlerTest {
     private final RestExceptionHandler handler = new RestExceptionHandler();
 
     @Test
-    @DisplayName("ValidationException 처리: 상태코드와 메시지를 그대로 응답")
+    @DisplayName("ValidationException 처리: ErrorCode 기준 메시지를 응답")
     void handleValidationExceptionReturnsStatusAndMessage() {
         ValidationException exception = new ValidationException(
                 ErrorCode.INVALID_PASSWORD_RESET_CODE,
@@ -31,7 +31,7 @@ class RestExceptionHandlerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody().code()).isEqualTo("INVALID_PASSWORD_RESET_CODE");
-        assertThat(response.getBody().message()).isEqualTo("커스텀 메시지");
+        assertThat(response.getBody().message()).isEqualTo(ErrorCode.INVALID_PASSWORD_RESET_CODE.getMessage());
     }
 
     @Test

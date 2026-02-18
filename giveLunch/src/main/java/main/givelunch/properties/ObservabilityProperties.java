@@ -13,11 +13,16 @@ public record ObservabilityProperties(
         String scenarioHeader,
         Sql sql
 ) {
-    public record Sql(
-            @DefaultValue("true")
-            boolean enabled,
-            @DefaultValue("200")
-            long slowQueryMs
-    ) {
+    public ObservabilityProperties {
+        if (sql == null) {
+            sql = new Sql(true, 200);
+        }
     }
+
+    public record Sql(
+        @DefaultValue("true")
+        boolean enabled,
+        @DefaultValue("200")
+        long slowQueryMs
+    ) { }
 }
