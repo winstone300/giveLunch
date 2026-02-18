@@ -2,7 +2,6 @@ package main.givelunch.controllers;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.loginDto.SignupRequestDto;
-import main.givelunch.exception.ValidationException;
 import main.givelunch.services.login.SignupService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

@@ -23,12 +23,12 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(ObservabilityProperties.class)
 public class ObservabilityConfig {
 
-    @Bean
+    @Bean   // 서블릿 필터 빈으로 등록
     @ConditionalOnProperty(prefix = "app.observability", name = "enabled", havingValue = "true", matchIfMissing = true)
     public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationFilter(ObservabilityProperties properties) {
         FilterRegistrationBean<RequestCorrelationFilter> registrationBean = new FilterRegistrationBean<>();
-        registrationBean.setFilter(new RequestCorrelationFilter(properties));
-        registrationBean.setOrder(Integer.MIN_VALUE + 100);
+        registrationBean.setFilter(new RequestCorrelationFilter(properties));   // runId와 시나리오 MDC에 저장하는 필터
+        registrationBean.setOrder(Integer.MIN_VALUE + 100);     // 필터체인 실행 순서 설정
         return registrationBean;
     }
 
@@ -40,15 +40,19 @@ public class ObservabilityConfig {
         return new BeanPostProcessor() {
             @Override
             public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
+                // 커넥션 풀 아니면 그냥 반환
                 if (!(bean instanceof DataSource dataSource)) {
                     return bean;
                 }
+
+                // 이미 프록시로 감싸져 있거나 scopedTarget빈이면 그냥 반환
                 if (bean instanceof ProxyDataSource || beanName.contains("scopedTarget")) {
                     return bean;
                 }
 
                 return ProxyDataSourceBuilder.create(dataSource)
                         .name(beanName)
+                        // 쿼리 실행 전후 호출
                         .listener(new SlowQueryMetricsListener(properties.sql().slowQueryMs(), meterRegistry))
                         .build();
             }
@@ -75,7 +79,7 @@ public class ObservabilityConfig {
 
         @Override
         public void afterQuery(net.ttddyy.dsproxy.ExecutionInfo execInfo, List<QueryInfo> queryInfoList) {
-            long elapsedMs = execInfo.getElapsedTime();
+            long elapsedMs = execInfo.getElapsedTime();     // sql 실행에 걸린 시간(프록시에 저장된 값 가져옴)
             timer.record(elapsedMs, TimeUnit.MILLISECONDS);
             if (elapsedMs < slowQueryMs) {
                 return;
@@ -91,6 +95,7 @@ public class ObservabilityConfig {
                     truncate(sql));
         }
 
+        // sql문 너무 길면 길이 제한
         private String truncate(String sql) {
             if (sql == null || sql.length() <= MAX_SQL_LOG_LENGTH) {
                 return sql;

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
@@ -48,6 +49,11 @@ public class RestExceptionHandler {
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(ValidationException e) {
         return buildErrorResponse(e.getErrorCode(),e.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDto> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        return buildErrorResponse(ErrorCode.VALIDATION_ERROR, "요청 본문 형식이 올바르지 않습니다.");
     }
 
     private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode) {

@@ -58,7 +58,22 @@ class RankControllerIntegrationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fields.name").value("음식 이름은 필수입니다."));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("POST /api/ranks: 본문 JSON 형식이 잘못되면 VALIDATION_ERROR 반환")
+    void recordRankReturnsValidationErrorWhenJsonMalformed() throws Exception {
+        mockMvc.perform(post("/api/ranks")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"비빔밥\""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("요청 본문 형식이 올바르지 않습니다."));
     }
 
     @Test
