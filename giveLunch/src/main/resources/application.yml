@@ -11,7 +11,33 @@ spring:
     hibernate:
       ddl-auto: update
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,httpexchanges
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      percentiles-histogram:
+        http.server.requests: true
+        hikaricp.connections.acquire: true
+        hikaricp.connections.usage: true
+
 app:
+  observability:
+    enabled: true
+    run-id-header: X-LoadTest-Run-Id
+    scenario-header: X-LoadTest-Scenario
+    sql:
+      enabled: true
+      slow-query-ms: 200
   menu:
     defaults:
       - 김치찌개

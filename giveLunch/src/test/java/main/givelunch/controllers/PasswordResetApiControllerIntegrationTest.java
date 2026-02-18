@@ -32,27 +32,28 @@ class PasswordResetApiControllerIntegrationTest {
 
     @Test
     @WithMockUser
-    @DisplayName("POST /reset-password/verify: 이메일/코드가 비어있으면 INVALID_EMAIL 반환")
-    void verifyResetCodeReturnsInvalidEmailWhenRequestIsBlank() throws Exception {
+    @DisplayName("POST /reset-password/verify: 이메일/코드가 비어있으면 필드 검증 에러 반환")
+    void verifyResetCodeReturnsValidationErrorWhenRequestIsBlank() throws Exception {
         mockMvc.perform(post("/reset-password/verify")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"\",\"code\":\"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_EMAIL"))
-                .andExpect(jsonPath("$.message").value("이메일을 입력해주세요."));
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fields.email").value("이메일을 입력해주세요."))
+                .andExpect(jsonPath("$.fields.code").value("인증 코드를 입력해주세요."));
     }
 
     @Test
     @WithMockUser
-    @DisplayName("POST /reset-password/verify: 등록되지 않은 이메일이면 INVALID_PASSWORD_RESET_CODE 반환")
-    void verifyResetCodeReturnsInvalidCodeWhenEmailTokenMissing() throws Exception {
+    @DisplayName("POST /reset-password/verify: 이메일 형식 오류면 VALIDATION_ERROR 반환")
+    void verifyResetCodeReturnsValidationErrorWhenEmailFormatInvalid() throws Exception {
         mockMvc.perform(post("/reset-password/verify")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"bad-email\",\"code\":\"123456\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_PASSWORD_RESET_CODE"))
-                .andExpect(jsonPath("$.message").value("비밀번호 재설정 코드가 올바르지 않습니다."));
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.fields.email").value("올바른 이메일 형식을 입력해주세요."));
     }
 }
