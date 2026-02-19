@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 public interface FoodRepository extends JpaRepository<Food, Long> {
     Optional<Food> findByName(String name);
 
-    @Query("select f.id from Food f where f.name like %:name% order by length(f.name) asc")
+    @Query("select f.id from Food f where f.name like concat(:name, '%') order by length(f.name) asc")
     List<Long> findIdByNameContaining(@Param("name") String name, Pageable pageable);
 
     @Query("""
