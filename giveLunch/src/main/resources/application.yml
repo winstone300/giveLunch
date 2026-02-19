@@ -37,7 +37,7 @@ app:
     scenario-header: X-LoadTest-Scenario
     sql:
       enabled: true
-      slow-query-ms: 200
+      slow-query-ms: 100
   menu:
     defaults:
       - 김치찌개
