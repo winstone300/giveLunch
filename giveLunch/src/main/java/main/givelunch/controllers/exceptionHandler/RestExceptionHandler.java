@@ -52,7 +52,7 @@ public class RestExceptionHandler {
     // 서비스 계층에서 ValidationException이 throw될 때 호출
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(ValidationException e) {
-        return buildErrorResponse(e.getErrorCode());
+        return buildErrorResponse(e.getErrorCode(), e.getMessage());
     }
 
     // 요청 본문 역직렬화(JSON 문법 오류, 타입 불일치 등)가 실패할 때 호출
@@ -63,6 +63,11 @@ public class RestExceptionHandler {
 
     private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode) {
         ErrorResponseDto response = new ErrorResponseDto(errorCode.getCode(), errorCode.getMessage());
+        return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
+    private ResponseEntity<ErrorResponseDto> buildErrorResponse(ErrorCode errorCode, String message) {
+        ErrorResponseDto response = new ErrorResponseDto(errorCode.getCode(), message);
         return ResponseEntity.status(errorCode.getStatus()).body(response);
     }
 
