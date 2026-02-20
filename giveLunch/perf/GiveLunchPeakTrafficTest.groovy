@@ -296,7 +296,7 @@ class GiveLunchPeakTrafficTest {
 
     private static String extractCsrfValue(String html) {
         if (!html) return null
-        def matcher = (html =~ /name="_csrf"\s+value="([^"]+)"/)
+        def matcher = (html =~ /name="_csrf"[^>]*value="([^"]+)"/)
         return matcher.find() ? matcher.group(1) : null
     }
 
