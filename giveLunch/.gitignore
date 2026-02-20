@@ -36,7 +36,7 @@ build/
 application-*.yml
 
 # nGrinder local artifacts
-**/giveLunch/perf/ngrinder/results/
-**/giveLunch/perf/ngrinder/reports/
-**/giveLunch/perf/ngrinder/*.log
-**/giveLunch/perf/ngrinder/local-*.properties
+/perf/ngrinder/results/
+/perf/ngrinder/reports/
+/perf/ngrinder/*.log
+/perf/*.properties

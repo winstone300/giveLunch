@@ -63,6 +63,8 @@ class GiveLunchPeakTrafficTest {
         HTTPPluginControl.getConnectionDefaults().useCookies = true
         CookieModule.setCookiePolicyHandler(null)
 
+        new HTTPRequest()
+
         def props = Grinder.grinder.getProperties()
         targetHost = props.getProperty("targetHost", "http://localhost:8080")
         userName = props.getProperty("userName", "loadtest1")
