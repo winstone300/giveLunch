@@ -33,11 +33,7 @@ public class FoodSearchService {
         }
 
         // db에 없으면 null 값 반환
-        Long existingId = foodRepository
-                .findIdByNameContaining(normalized, PageRequest.of(0, 1))
-                .stream()
-                .findFirst()
-                .orElse(null);
+        Long existingId = foodRepository.findIdByNameIgnoreCase(normalized).orElse(null);
 
         return existingId;
     }

@@ -6,9 +6,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Optional;
 
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.exception.ValidationException;
+import main.givelunch.properties.DataGoKrProperties;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,8 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import main.givelunch.properties.DataGoKrProperties;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -75,15 +75,15 @@ class FoodSearchServiceTest {
         String input = "  샐러드  ";
         String normalized = "샐러드";
 
-        when(foodRepository.findIdByNameContaining(eq(normalized), eq(PageRequest.of(0, 1))))
-                .thenReturn(List.of(10L));
+        when(foodRepository.findIdByNameIgnoreCase(eq(normalized)))
+                .thenReturn(Optional.of(10L));
 
         // when
         Long result = foodSearchService.getIdByName(input);
 
         // then
         assertThat(result).isEqualTo(10L);
-        verify(foodRepository).findIdByNameContaining(eq(normalized), eq(PageRequest.of(0, 1)));
+        verify(foodRepository).findIdByNameIgnoreCase(eq(normalized));
         verifyNoMoreInteractions(foodRepository);
     }
 
@@ -94,15 +94,15 @@ class FoodSearchServiceTest {
         String input = "김밥";
         String normalized = "김밥";
 
-        when(foodRepository.findIdByNameContaining(eq(normalized), eq(PageRequest.of(0, 1))))
-                .thenReturn(List.of());
+        when(foodRepository.findIdByNameIgnoreCase(eq(normalized)))
+                .thenReturn(Optional.empty());
 
         // when
         Long result = foodSearchService.getIdByName(input);
 
         // then
         assertThat(result).isNull();
-        verify(foodRepository).findIdByNameContaining(eq(normalized), eq(PageRequest.of(0, 1)));
+        verify(foodRepository).findIdByNameIgnoreCase(eq(normalized));
         verifyNoMoreInteractions(foodRepository);
     }
 
