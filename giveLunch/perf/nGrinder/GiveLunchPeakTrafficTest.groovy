@@ -30,11 +30,13 @@ class GiveLunchPeakTrafficTest {
     static GTest testAddMenu
     static GTest testDeleteMenu
     static GTest testPostRank
+    static GTest testAdminFoodSearch
 
     static String targetHost
     static String userName
     static String password
     static String runId
+    static boolean enableAdminFoodSearchScenario
 
     static final int TIMEOUT_MS = 6000
     static final String RUN_ID_HEADER = "X-LoadTest-Run-Id"
@@ -54,6 +56,7 @@ class GiveLunchPeakTrafficTest {
     HTTPRequest addMenuRequest
     HTTPRequest deleteMenuRequest
     HTTPRequest postRankRequest
+    HTTPRequest adminFoodSearchRequest
     String csrfToken
     List<Long> knownFoodIds = []
 
@@ -70,6 +73,8 @@ class GiveLunchPeakTrafficTest {
         userName = props.getProperty("userName", "loadtest1")
         password = props.getProperty("password", "loadtest-pass!")
         runId = props.getProperty("runId", "peak-${System.currentTimeMillis()}")
+        enableAdminFoodSearchScenario = Boolean.parseBoolean(
+                props.getProperty("enableAdminFoodSearchScenario", "false"))
 
         testSuggest = new GTest(1, "GET /api/menus/suggest")
         testSearchFoodId = new GTest(2, "GET /api/foods/search")
@@ -78,6 +83,7 @@ class GiveLunchPeakTrafficTest {
         testAddMenu = new GTest(5, "POST /api/menus")
         testDeleteMenu = new GTest(6, "DELETE /api/menus")
         testPostRank = new GTest(7, "POST /api/ranks")
+        testAdminFoodSearch = new GTest(8, "GET /api/admin/foods?keyword=")
     }
 
     @BeforeThread
@@ -95,6 +101,7 @@ class GiveLunchPeakTrafficTest {
         addMenuRequest = new HTTPRequest()
         deleteMenuRequest = new HTTPRequest()
         postRankRequest = new HTTPRequest()
+        adminFoodSearchRequest = new HTTPRequest()
 
         testSuggest.record(suggestRequest)
         testSearchFoodId.record(searchFoodIdRequest)
@@ -103,6 +110,7 @@ class GiveLunchPeakTrafficTest {
         testAddMenu.record(addMenuRequest)
         testDeleteMenu.record(deleteMenuRequest)
         testPostRank.record(postRankRequest)
+        testAdminFoodSearch.record(adminFoodSearchRequest)
 
         login()
         seedKnownFoodIds()
@@ -118,6 +126,7 @@ class GiveLunchPeakTrafficTest {
         setHeaders(addMenuRequest, "add-menu")
         setHeaders(deleteMenuRequest, "delete-menu")
         setHeaders(postRankRequest, "post-rank")
+        setHeaders(adminFoodSearchRequest, "admin-food-search")
     }
 
     @Test
@@ -160,6 +169,15 @@ class GiveLunchPeakTrafficTest {
     @RunRate(5)
     void postRankScenario() {
         postRank()
+    }
+
+    @Test
+    @RunRate(5)
+    void adminFoodSearchScenario() {
+        if (!enableAdminFoodSearchScenario) {
+            return
+        }
+        adminFoodSearch()
     }
 
     // -----------------------------
@@ -243,6 +261,13 @@ class GiveLunchPeakTrafficTest {
                 jsonBytes([menuName: menuName])
         )
         assertStatusIn(resp, "DELETE menu", 204)
+    }
+
+    private void adminFoodSearch() {
+        String query = pick(SEARCH_QUERIES)
+        HTTPResponse resp = adminFoodSearchRequest.GET(
+                urlFor("/api/admin/foods?page=0&size=10&keyword=${urlEncode(query)}"))
+        assertStatusIn(resp, "GET admin food search", 200)
     }
 
     private void seedKnownFoodIds() {
