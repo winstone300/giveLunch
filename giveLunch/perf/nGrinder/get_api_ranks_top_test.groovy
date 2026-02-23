@@ -1,0 +1,126 @@
+import HTTPClient.CookieModule
+import HTTPClient.HTTPResponse
+import HTTPClient.NVPair
+import net.grinder.plugin.http.HTTPPluginControl
+import net.grinder.plugin.http.HTTPRequest
+import net.grinder.script.GTest
+import net.grinder.script.Grinder
+import net.grinder.scriptengine.groovy.junit.GrinderRunner
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeProcess
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeThread
+import net.grinder.scriptengine.groovy.junit.annotation.RunRate
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(GrinderRunner)
+class GiveLunchTopRanksOnlyTest {
+    static GTest testTopRanks
+    static String targetHost
+    static String userName
+    static String password
+    static String runId
+    static final int TIMEOUT_MS = 6000
+    static final String RUN_ID_HEADER = "X-LoadTest-Run-Id"
+    static final String SCENARIO_HEADER = "X-LoadTest-Scenario"
+
+    HTTPRequest authRequest
+    HTTPRequest topRanksRequest
+    String csrfToken
+
+    @BeforeProcess
+    static void beforeProcess() {
+        HTTPPluginControl.getConnectionDefaults().timeout = TIMEOUT_MS
+        HTTPPluginControl.getConnectionDefaults().useCookies = true
+        CookieModule.setCookiePolicyHandler(null)
+        new HTTPRequest()
+
+        def props = Grinder.grinder.getProperties()
+        targetHost = props.getProperty("targetHost", "http://localhost:8080")
+        userName = props.getProperty("userName", "loadtest1")
+        password = props.getProperty("password", "loadtest-pass!")
+        runId = props.getProperty("runId", "top-ranks-${System.currentTimeMillis()}")
+
+        testTopRanks = new GTest(1, "GET /api/ranks/top")
+    }
+
+    @BeforeThread
+    void beforeThread() {
+        authRequest = new HTTPRequest()
+        topRanksRequest = new HTTPRequest()
+        testTopRanks.record(topRanksRequest)
+        login()
+        Grinder.grinder.statistics.delayReports = true
+    }
+
+    @Before
+    void before() {
+        setHeaders(topRanksRequest, "top-ranks")
+    }
+
+    @Test
+    @RunRate(100)
+    void topRanksScenario() {
+        HTTPResponse resp = topRanksRequest.GET(urlFor("/api/ranks/top?limit=5"))
+        assertStatusIn(resp, "GET top ranks", 200)
+    }
+
+    private void login() {
+        HTTPResponse loginPage = get("/login", "GET /login", 200)
+        String loginCsrf = extractCsrfValue(loginPage.getText())
+        Assert.assertNotNull("CSRF token not found from /login", loginCsrf)
+
+        HTTPResponse loginResp = authRequest.POST(
+                urlFor("/login"),
+                [
+                        new NVPair("userName", userName),
+                        new NVPair("password", password),
+                        new NVPair("_csrf", loginCsrf)
+                ] as NVPair[]
+        )
+        assertStatusIn(loginResp, "POST /login", 200, 302)
+
+        HTTPResponse roulettePage = get("/roulette", "GET /roulette", 200)
+        csrfToken = extractCsrfValue(roulettePage.getText())
+        Assert.assertNotNull("CSRF token not found from /roulette", csrfToken)
+    }
+
+    private HTTPResponse get(String pathAndQuery, String name, int... allowedStatus) {
+        HTTPResponse resp = authRequest.GET(urlFor(pathAndQuery))
+        assertStatusIn(resp, name, allowedStatus)
+        return resp
+    }
+
+    private void setHeaders(HTTPRequest request, String scenario) {
+        request.setHeaders([
+                new NVPair("Content-Type", "application/json"),
+                new NVPair("Accept", "application/json"),
+                new NVPair("X-CSRF-TOKEN", csrfToken ?: ""),
+                new NVPair(RUN_ID_HEADER, runId),
+                new NVPair(SCENARIO_HEADER, scenario)
+        ] as NVPair[])
+    }
+
+    private static void assertStatusIn(HTTPResponse response, String name, int... allowed) {
+        boolean ok = allowed.any { it == response.statusCode }
+        Assert.assertTrue("${name} failed: status=${response.statusCode}", ok)
+    }
+
+    private static String extractCsrfValue(String html) {
+        if (!html) return null
+        def matcher = (html =~ /name="_csrf"[^>]*value="([^"]+)"/)
+        return matcher.find() ? matcher.group(1) : null
+    }
+
+    private static String urlFor(String pathAndQuery) {
+        if (!pathAndQuery) return targetHost
+        if (targetHost.endsWith("/") && pathAndQuery.startsWith("/")) {
+            return targetHost.substring(0, targetHost.length() - 1) + pathAndQuery
+        }
+        if (!targetHost.endsWith("/") && !pathAndQuery.startsWith("/")) {
+            return targetHost + "/" + pathAndQuery
+        }
+        return targetHost + pathAndQuery
+    }
+}

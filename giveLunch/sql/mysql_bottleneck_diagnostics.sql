@@ -45,3 +45,13 @@ SELECT
 FROM performance_schema.events_waits_summary_global_by_event_name
 ORDER BY SUM_TIMER_WAIT DESC
 LIMIT 20;
+
+-- findIdByNameContaining() 쿼리
+SELECT DIGEST_TEXT, COUNT_STAR,
+       ROUND(AVG_TIMER_WAIT/1e9,2) avg_ms,
+       ROUND(MAX_TIMER_WAIT/1e9,2) max_ms
+FROM performance_schema.events_statements_summary_by_digest
+WHERE DIGEST_TEXT LIKE 'SELECT `f1_0` . `id` FROM `foods`%'
+  AND DIGEST_TEXT LIKE '%LIKE `concat`%'
+  AND DIGEST_TEXT LIKE '%ORDER BY `character_length`%'
+  AND DIGEST_TEXT LIKE '%LIMIT ?%';
