@@ -26,7 +26,7 @@ class GiveLunchFoodSearchOnlyTest {
     static final int TIMEOUT_MS = 6000
     static final String RUN_ID_HEADER = "X-LoadTest-Run-Id"
     static final String SCENARIO_HEADER = "X-LoadTest-Scenario"
-    static final String[] SEARCH_QUERIES = ["김", "제", "돈", "라", "파", "샐", "찌개", "밥"]
+    static final String[] SEARCH_QUERIES = ["김", "제", "돈", "라", "파", "샐", "김치", "볶"]
 
     HTTPRequest authRequest
     HTTPRequest searchRequest
@@ -83,11 +83,17 @@ class GiveLunchFoodSearchOnlyTest {
                         new NVPair("_csrf", loginCsrf)
                 ] as NVPair[]
         )
-        assertStatusIn(loginResp, "POST /login", 200, 302)
-
+        assertStatusIn(loginResp, "POST /login", 302)
+        String location = headerValue(loginResp, "Location")
+        Assert.assertNotNull("POST /login missing Location header", location)
+        boolean successRedirect = location.contains("/roulette") || location.contains("/admin")
+        boolean failureRedirect = location.contains("/login?error") || location.contains("/login?locked")
+        Assert.assertTrue("Login failed or unknown redirect. Location=${location}", successRedirect && !failureRedirect)
         HTTPResponse roulettePage = get("/roulette", "GET /roulette", 200)
         csrfToken = extractCsrfValue(roulettePage.getText())
         Assert.assertNotNull("CSRF token not found from /roulette", csrfToken)
+        HTTPResponse authProbe = authRequest.GET(urlFor("/api/menus/suggest?query=%EA%B9%80"))
+        assertStatusIn(authProbe, "GET /api/menus/suggest preflight", 200)
     }
 
     private HTTPResponse get(String pathAndQuery, String name, int... allowedStatus) {
@@ -105,6 +111,19 @@ class GiveLunchFoodSearchOnlyTest {
                 new NVPair(SCENARIO_HEADER, scenario)
         ] as NVPair[])
     }
+    private static String headerValue(HTTPResponse response, String name) {
+        String direct = response.getHeader(name)
+        if (direct != null) return direct
+        NVPair[] headers = response.getHeaders()
+        if (headers == null) return null
+        for (NVPair p : headers) {
+            if (p != null && p.getName() != null && p.getName().equalsIgnoreCase(name)) {
+                return p.getValue()
+            }
+        }
+        return null
+    }
+
 
     private static void assertStatusIn(HTTPResponse response, String name, int... allowed) {
         boolean ok = allowed.any { it == response.statusCode }
