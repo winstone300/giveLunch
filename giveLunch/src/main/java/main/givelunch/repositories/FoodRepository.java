@@ -16,10 +16,10 @@ public interface FoodRepository extends JpaRepository<Food, Long> {
     @Query("select f.id from Food f where f.name = :name")
     Optional<Long> findIdByName(@Param("name") String name);
 
-    // 검색시 음식 추천
+    // 검색시 음식 추천(get /api/menus/suggest)
     @Query("""
             select f from Food f
-            where lower(f.name) like lower(concat('%', :name, '%'))
+            where f.name like concat(:name, '%')
             order by length(f.name) asc
             """)
     List<Food> findByNameContainingOrderByShortestName(@Param("name") String name, Pageable pageable);
