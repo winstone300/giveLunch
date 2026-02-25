@@ -75,7 +75,7 @@ class FoodSearchServiceTest {
         String input = "  샐러드  ";
         String normalized = "샐러드";
 
-        when(foodRepository.findIdByNameIgnoreCase(eq(normalized)))
+        when(foodRepository.findIdByName(eq(normalized)))
                 .thenReturn(Optional.of(10L));
 
         // when
@@ -83,7 +83,7 @@ class FoodSearchServiceTest {
 
         // then
         assertThat(result).isEqualTo(10L);
-        verify(foodRepository).findIdByNameIgnoreCase(eq(normalized));
+        verify(foodRepository).findIdByName(eq(normalized));
         verifyNoMoreInteractions(foodRepository);
     }
 
@@ -94,7 +94,7 @@ class FoodSearchServiceTest {
         String input = "김밥";
         String normalized = "김밥";
 
-        when(foodRepository.findIdByNameIgnoreCase(eq(normalized)))
+        when(foodRepository.findIdByName(eq(normalized)))
                 .thenReturn(Optional.empty());
 
         // when
@@ -102,7 +102,7 @@ class FoodSearchServiceTest {
 
         // then
         assertThat(result).isNull();
-        verify(foodRepository).findIdByNameIgnoreCase(eq(normalized));
+        verify(foodRepository).findIdByName(eq(normalized));
         verifyNoMoreInteractions(foodRepository);
     }
 

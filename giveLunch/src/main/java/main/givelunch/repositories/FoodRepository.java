@@ -12,9 +12,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FoodRepository extends JpaRepository<Food, Long> {
-    // 이름으로 foodID 찾을 때
-    @Query("select f.id from Food f where lower(f.name) = lower(:name)")
-    Optional<Long> findIdByNameIgnoreCase(@Param("name") String name);
+    // 이름으로 foodID 찾을 때(get api/foods/search)
+    @Query("select f.id from Food f where f.name = :name")
+    Optional<Long> findIdByName(@Param("name") String name);
 
     // 검색시 음식 추천
     @Query("""
