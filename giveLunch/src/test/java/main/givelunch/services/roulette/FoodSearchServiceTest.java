@@ -7,10 +7,13 @@ import static org.mockito.Mockito.*;
 
 import java.util.List;
 import java.util.Optional;
-
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
+import main.givelunch.entities.Food;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.properties.DataGoKrProperties;
+import main.givelunch.properties.MenuProperties;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -40,6 +44,10 @@ class FoodSearchServiceTest {
             8,
             3
     );
+    private final MenuProperties menuProperties = new MenuProperties(
+            List.of("기본 메뉴"),
+            new MenuProperties.SuggestProperties(200, 10)
+    );
 
     private FoodSearchService foodSearchService;
 
@@ -48,7 +56,8 @@ class FoodSearchServiceTest {
         foodSearchService = new FoodSearchService(
                 foodRepository,
                 dataGoKrFoodClient,
-                dataGoKrProperties
+                dataGoKrProperties,
+                menuProperties
         );
     }
 
@@ -136,5 +145,43 @@ class FoodSearchServiceTest {
         assertThat(result).isEmpty();
         verify(dataGoKrFoodClient).fetchFoodsByName("라면", 8);
         verifyNoMoreInteractions(dataGoKrFoodClient);
+    }
+
+    @Test
+    @DisplayName("suggestFoods: 공백 입력이면 빈 리스트 반환(Repository 호출 없음)")
+    void suggestFoods_returnsEmpty_whenNameIsBlank() {
+        List<FoodSuggestionDto> result = foodSearchService.suggestFoods("   ");
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(foodRepository);
+    }
+
+    @Test
+    @DisplayName("suggestFoods: prefix 후보를 조회해 앱에서 길이순/이름순 정렬 후 제한 개수만 반환")
+    void suggestFoods_sortsAndLimitsInApplication() {
+        Food kimchiRice = Food.from(new FoodDto(1L, "김치볶음밥", "한식", null, 100));
+        Food kimbap = Food.from(new FoodDto(2L, "김밥", "분식", null, 100));
+        Food kimchi = Food.from(new FoodDto(3L, "김치", "한식", null, 100));
+
+        MenuProperties tunedProperties = new MenuProperties(
+                List.of("기본 메뉴"),
+                new MenuProperties.SuggestProperties(3, 2)
+        );
+        FoodSearchService tunedService = new FoodSearchService(
+                foodRepository,
+                dataGoKrFoodClient,
+                dataGoKrProperties,
+                tunedProperties
+        );
+
+        when(foodRepository.findByNameStartingWith("김", PageRequest.of(0, 3)))
+                .thenReturn(List.of(kimchiRice, kimchi, kimbap));
+
+        List<FoodSuggestionDto> result = tunedService.suggestFoods("김");
+
+        assertThat(result).extracting(FoodSuggestionDto::name)
+                .containsExactly("김밥", "김치");
+        verify(foodRepository).findByNameStartingWith("김", PageRequest.of(0, 3));
+        verifyNoMoreInteractions(foodRepository);
     }
 }

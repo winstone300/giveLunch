@@ -20,9 +20,8 @@ public interface FoodRepository extends JpaRepository<Food, Long> {
     @Query("""
             select f from Food f
             where f.name like concat(:name, '%')
-            order by length(f.name) asc
             """)
-    List<Food> findByNameContainingOrderByShortestName(@Param("name") String name, Pageable pageable);
+    List<Food> findByNameStartingWith(@Param("name") String name, Pageable pageable);
 
     // 관리자 페이지 검색용
     Page<Food> findByNameContainingIgnoreCase(String name, Pageable pageable);

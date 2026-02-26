@@ -30,7 +30,10 @@ class MenuServiceTest {
     void loadMenu_returnsDefaultsWhenNoMenus() {
         //given
         MenuService menuService =
-                new MenuService(menuRepository, new MenuProperties(List.of("치킨","피자")));
+                new MenuService(menuRepository, new MenuProperties(
+                        List.of("치킨", "피자"),
+                        new MenuProperties.SuggestProperties(200, 10)
+                ));
         String userName = "user1";
         List<String> defaults = List.of("치킨", "피자");
 

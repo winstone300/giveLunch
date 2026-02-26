@@ -43,3 +43,6 @@ app:
       - 김치찌개
       - 제육볶음
       - 돈까스
+    suggest:
+      candidate-fetch-limit: 200
+      result-limit: 10
