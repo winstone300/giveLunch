@@ -12,17 +12,16 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FoodRepository extends JpaRepository<Food, Long> {
-    // 이름으로 foodID 찾을 때
-    @Query("select f.id from Food f where f.name like concat(:name, '%') order by length(f.name) asc")
-    List<Long> findIdByNameContaining(@Param("name") String name, Pageable pageable);
+    // 이름으로 foodID 찾을 때(get api/foods/search)
+    @Query("select f.id from Food f where f.name = :name")
+    Optional<Long> findIdByName(@Param("name") String name);
 
-    // 검색시 음식 추천
+    // 검색시 음식 추천(get /api/menus/suggest)
     @Query("""
             select f from Food f
-            where lower(f.name) like lower(concat('%', :name, '%'))
-            order by length(f.name) asc
+            where f.name like concat(:name, '%')
             """)
-    List<Food> findByNameContainingOrderByShortestName(@Param("name") String name, Pageable pageable);
+    List<Food> findByNameStartingWith(@Param("name") String name, Pageable pageable);
 
     // 관리자 페이지 검색용
     Page<Food> findByNameContainingIgnoreCase(String name, Pageable pageable);

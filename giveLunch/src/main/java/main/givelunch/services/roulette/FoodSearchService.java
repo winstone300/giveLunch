@@ -1,13 +1,16 @@
 package main.givelunch.services.roulette;
 
 import java.util.List;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
+import main.givelunch.entities.Food;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
 import main.givelunch.properties.DataGoKrProperties;
+import main.givelunch.properties.MenuProperties;
 import main.givelunch.repositories.FoodRepository;
 import main.givelunch.services.external.DataGoKrFoodClient;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +24,7 @@ public class FoodSearchService {
     private final FoodRepository foodRepository;
     private final DataGoKrFoodClient dataGoKrFoodClient;
     private final DataGoKrProperties properties;
+    private final MenuProperties menuProperties;
 
     /**
      * 음식 이름으로 ID를 조회하되, 로컬에 없으면 외부 API에서 조회 후 저장한다.
@@ -33,11 +37,7 @@ public class FoodSearchService {
         }
 
         // db에 없으면 null 값 반환
-        Long existingId = foodRepository
-                .findIdByNameContaining(normalized, PageRequest.of(0, 1))
-                .stream()
-                .findFirst()
-                .orElse(null);
+        Long existingId = foodRepository.findIdByName(normalized).orElse(null);
 
         return existingId;
     }
@@ -52,9 +52,16 @@ public class FoodSearchService {
         if (name == null || name.isBlank()) {
             return List.of();
         }
+        MenuProperties.SuggestProperties suggest = menuProperties.suggest();
+        if (suggest.candidateFetchLimit() < suggest.resultLimit()) {
+            throw new IllegalStateException("app.menu.suggest.candidate-fetch-limit must be >= result-limit");
+        }
         return foodRepository
-                .findByNameContainingOrderByShortestName(name.trim(), PageRequest.of(0, 10))
+                .findByNameStartingWith(name.trim(), PageRequest.of(0, suggest.candidateFetchLimit()))
                 .stream()
+                .sorted(Comparator.comparingInt((Food food) -> food.getName().length())
+                        .thenComparing(Food::getName))
+                .limit(suggest.resultLimit())
                 .map(FoodSuggestionDto::from)
                 .collect(Collectors.toList());
     }

@@ -23,12 +23,12 @@ management:
     tags:
       application: ${spring.application.name}
     distribution:
-      percentiles:
-        http.server.requests: 0.5,0.95,0.99
       percentiles-histogram:
         http.server.requests: true
         hikaricp.connections.acquire: true
         hikaricp.connections.usage: true
+      slo:
+        http.server.requests: 100ms,200ms,500ms,1s,2s,5s
 
 app:
   observability:
@@ -37,9 +37,12 @@ app:
     scenario-header: X-LoadTest-Scenario
     sql:
       enabled: true
-      slow-query-ms: 100
+      slow-query-ms: 200
   menu:
     defaults:
       - 김치찌개
       - 제육볶음
       - 돈까스
+    suggest:
+      candidate-fetch-limit: 200
+      result-limit: 10
