@@ -12,6 +12,7 @@ import net.ttddyy.dsproxy.listener.QueryExecutionListener;
 import net.ttddyy.dsproxy.support.ProxyDataSource;
 import net.ttddyy.dsproxy.support.ProxyDataSourceBuilder;
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -36,7 +37,7 @@ public class ObservabilityConfig {
     @ConditionalOnProperty(prefix = "app.observability.sql", name = "enabled", havingValue = "true", matchIfMissing = true)
     public BeanPostProcessor dataSourceProxyBeanPostProcessor(
             ObservabilityProperties properties,
-            MeterRegistry meterRegistry) {
+            ObjectProvider<MeterRegistry> meterRegistryProvider) {
         return new BeanPostProcessor() {
             @Override
             public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
@@ -53,7 +54,7 @@ public class ObservabilityConfig {
                 return ProxyDataSourceBuilder.create(dataSource)
                         .name(beanName)
                         // 쿼리 실행 전후 호출
-                        .listener(new SlowQueryMetricsListener(properties.sql().slowQueryMs(), meterRegistry))
+                        .listener(new SlowQueryMetricsListener(properties.sql().slowQueryMs(), meterRegistryProvider))
                         .build();
             }
         };
@@ -64,13 +65,12 @@ public class ObservabilityConfig {
 
         private static final int MAX_SQL_LOG_LENGTH = 400;
         private final long slowQueryMs;
-        private final Timer timer;
+        private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+        private volatile Timer timer;
 
-        SlowQueryMetricsListener(long slowQueryMs, MeterRegistry meterRegistry) {
+        SlowQueryMetricsListener(long slowQueryMs, ObjectProvider<MeterRegistry> meterRegistryProvider) {
             this.slowQueryMs = slowQueryMs;
-            this.timer = Timer.builder("givelunch.sql.query")
-                    .description("Elapsed SQL query execution time from datasource-proxy")
-                    .register(meterRegistry);
+            this.meterRegistryProvider = meterRegistryProvider;
         }
 
         @Override
@@ -80,7 +80,10 @@ public class ObservabilityConfig {
         @Override
         public void afterQuery(net.ttddyy.dsproxy.ExecutionInfo execInfo, List<QueryInfo> queryInfoList) {
             long elapsedMs = execInfo.getElapsedTime();     // sql 실행에 걸린 시간(프록시에 저장된 값 가져옴)
-            timer.record(elapsedMs, TimeUnit.MILLISECONDS);
+            Timer currentTimer = getOrCreateTimer();
+            if (currentTimer != null) {
+                currentTimer.record(elapsedMs, TimeUnit.MILLISECONDS);
+            }
             if (elapsedMs < slowQueryMs) {
                 return;
             }
@@ -93,6 +96,25 @@ public class ObservabilityConfig {
                     execInfo.isBatch(),
                     execInfo.isSuccess(),
                     truncate(sql));
+        }
+
+        private Timer getOrCreateTimer() {
+            Timer localTimer = timer;
+            if (localTimer != null) {
+                return localTimer;
+            }
+            MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+            if (meterRegistry == null) {
+                return null;
+            }
+            synchronized (this) {
+                if (timer == null) {
+                    timer = Timer.builder("givelunch.sql.query")
+                            .description("Elapsed SQL query execution time from datasource-proxy")
+                            .register(meterRegistry);
+                }
+                return timer;
+            }
         }
 
         // sql문 너무 길면 길이 제한
