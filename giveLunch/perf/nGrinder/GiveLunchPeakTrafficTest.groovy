@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ThreadLocalRandom
 
 @RunWith(GrinderRunner)
@@ -35,8 +36,12 @@ class GiveLunchPeakTrafficTest {
     static String targetHost
     static String userName
     static String password
+    static String adminUserName
+    static String adminPassword
     static String runId
     static boolean enableAdminFoodSearchScenario
+    static final AtomicInteger authRedirectFailureCount = new AtomicInteger(0)
+    static final AtomicInteger functionalFailureCount = new AtomicInteger(0)
 
     static final int TIMEOUT_MS = 6000
     static final String RUN_ID_HEADER = "X-LoadTest-Run-Id"
@@ -48,7 +53,8 @@ class GiveLunchPeakTrafficTest {
     // -----------------------------
     // Thread-level (스레드별 상태)
     // -----------------------------
-    HTTPRequest authRequest
+    HTTPRequest userAuthRequest
+    HTTPRequest adminAuthRequest
     HTTPRequest suggestRequest
     HTTPRequest searchFoodIdRequest
     HTTPRequest nutritionRequest
@@ -57,7 +63,10 @@ class GiveLunchPeakTrafficTest {
     HTTPRequest deleteMenuRequest
     HTTPRequest postRankRequest
     HTTPRequest adminFoodSearchRequest
-    String csrfToken
+    String userCsrfToken
+    String adminCsrfToken
+    boolean userSessionReady
+    boolean adminSessionReady
     List<Long> knownFoodIds = []
 
     @BeforeProcess
@@ -72,6 +81,8 @@ class GiveLunchPeakTrafficTest {
         targetHost = props.getProperty("targetHost", "http://localhost:8080")
         userName = props.getProperty("userName", "loadtest1")
         password = props.getProperty("password", "loadtest-pass!")
+        adminUserName = props.getProperty("adminUserName", "admin")
+        adminPassword = props.getProperty("adminPassword", "admin-pass!")
         runId = props.getProperty("runId", "peak-${System.currentTimeMillis()}")
         enableAdminFoodSearchScenario = Boolean.parseBoolean(
                 props.getProperty("enableAdminFoodSearchScenario", "false"))
@@ -93,7 +104,8 @@ class GiveLunchPeakTrafficTest {
         }
 
         // 스레드마다 request 인스턴스를 분리(헤더/쿠키 등 공유로 인한 섞임 방지)
-        authRequest = new HTTPRequest()
+        userAuthRequest = new HTTPRequest()
+        adminAuthRequest = new HTTPRequest()
         suggestRequest = new HTTPRequest()
         searchFoodIdRequest = new HTTPRequest()
         nutritionRequest = new HTTPRequest()
@@ -112,7 +124,9 @@ class GiveLunchPeakTrafficTest {
         testPostRank.record(postRankRequest)
         testAdminFoodSearch.record(adminFoodSearchRequest)
 
-        login()
+        userSessionReady = false
+        adminSessionReady = false
+        loginAsUser()
         seedKnownFoodIds()
         Grinder.grinder.statistics.delayReports = true
     }
@@ -123,10 +137,10 @@ class GiveLunchPeakTrafficTest {
         setHeaders(searchFoodIdRequest, "food-search")
         setHeaders(nutritionRequest, "nutrition")
         setHeaders(topRanksRequest, "top-ranks")
-        setHeaders(addMenuRequest, "add-menu")
+        setHeaders(addMenuRequest, "add-menu", userCsrfToken)
         setHeaders(deleteMenuRequest, "delete-menu")
-        setHeaders(postRankRequest, "post-rank")
-        setHeaders(adminFoodSearchRequest, "admin-food-search")
+        setHeaders(postRankRequest, "post-rank", userCsrfToken)
+        setHeaders(adminFoodSearchRequest, "admin-food-search", adminCsrfToken)
     }
 
     @Test
@@ -183,30 +197,48 @@ class GiveLunchPeakTrafficTest {
     // -----------------------------
     // Flows
     // -----------------------------
-    private void login() {
-        HTTPResponse loginPage = get("/login", "GET /login", 200)
+    private void loginAsUser() {
+        userCsrfToken = loginAndCreateSession(userAuthRequest, userName, password, "/roulette", "user")
+        userSessionReady = true
+    }
+
+    private void loginAsAdmin() {
+        adminCsrfToken = loginAndCreateSession(adminAuthRequest, adminUserName, adminPassword, "/admin", "admin")
+        adminSessionReady = true
+    }
+
+    private String loginAndCreateSession(HTTPRequest request, String loginId, String loginPw, String csrfPagePath, String roleLabel) {
+        HTTPResponse loginPage = get(request, "/login", "GET /login (${roleLabel})", 200)
         String loginCsrf = extractCsrfValue(loginPage.getText())
         Assert.assertNotNull("CSRF token not found from /login", loginCsrf)
 
-        HTTPResponse loginResp = authRequest.POST(
+        HTTPResponse loginResp = request.POST(
                 urlFor("/login"),
                 [
-                        new NVPair("userName", userName),
-                        new NVPair("password", password),
+                        new NVPair("userName", loginId),
+                        new NVPair("password", loginPw),
                         new NVPair("_csrf", loginCsrf)
                 ] as NVPair[]
         )
         assertStatusIn(loginResp, "POST /login", 302)
+        if (!hasJSessionIdCookie(loginResp)) {
+            Grinder.grinder.logger.warn("{} login response has no JSESSIONID Set-Cookie. Will verify session with authenticated probe.", roleLabel)
+        }
         String location = headerValue(loginResp, "Location")
         Assert.assertNotNull("POST /login missing Location header", location)
         boolean successRedirect = location.contains("/roulette") || location.contains("/admin")
         boolean failureRedirect = location.contains("/login?error") || location.contains("/login?locked")
         Assert.assertTrue("Login failed or unknown redirect. Location=${location}", successRedirect && !failureRedirect)
-        HTTPResponse roulettePage = get("/roulette", "GET /roulette", 200)
-        csrfToken = extractCsrfValue(roulettePage.getText())
-        Assert.assertNotNull("CSRF token not found from /roulette", csrfToken)
-        HTTPResponse authProbe = authRequest.GET(urlFor("/api/menus/suggest?query=%EA%B9%80"))
-        assertStatusIn(authProbe, "GET /api/menus/suggest preflight", 200)
+
+        HTTPResponse csrfPage = get(request, csrfPagePath, "GET ${csrfPagePath} (${roleLabel})", 200)
+        String token = extractCsrfValue(csrfPage.getText())
+        if (token == null) {
+            Grinder.grinder.logger.info("No CSRF token found from {} for {} session; proceeding without CSRF header.", csrfPagePath, roleLabel)
+        }
+
+        HTTPResponse authProbe = request.GET(urlFor("/api/menus/suggest?query=%EA%B9%80"))
+        assertStatusIn(authProbe, "GET /api/menus/suggest preflight (${roleLabel})", 200)
+        return token
     }
 
     private void suggest() {
@@ -240,6 +272,8 @@ class GiveLunchPeakTrafficTest {
     }
 
     private void postRank() {
+        ensureUserSession()
+        setHeaders(postRankRequest, "post-rank", userCsrfToken)
         String name = pick(HOT_FOODS)
         HTTPResponse resp = postRankRequest.POST(
                 urlFor("/api/ranks"),
@@ -249,6 +283,8 @@ class GiveLunchPeakTrafficTest {
     }
 
     private void addMenu() {
+        ensureUserSession()
+        setHeaders(addMenuRequest, "add-menu", userCsrfToken)
         String menuName = "menu_${ThreadLocalRandom.current().nextInt(100000)}"
         long foodId = ThreadLocalRandom.current().nextLong(1, 1_000_000)
 
@@ -270,6 +306,8 @@ class GiveLunchPeakTrafficTest {
     }
 
     private void adminFoodSearch() {
+        ensureAdminSession()
+        setHeaders(adminFoodSearchRequest, "admin-food-search", adminCsrfToken)
         String query = pick(SEARCH_QUERIES)
         HTTPResponse resp = adminFoodSearchRequest.GET(
                 urlFor("/api/admin/foods?page=0&size=10&keyword=${urlEncode(query)}"))
@@ -280,7 +318,7 @@ class GiveLunchPeakTrafficTest {
         LinkedHashSet<Long> seeded = new LinkedHashSet<>()
 
         (HOT_FOODS + SEARCH_QUERIES).each { String keyword ->
-            HTTPResponse response = authRequest.GET(urlFor("/api/foods/search?name=${urlEncode(keyword)}"))
+            HTTPResponse response = userAuthRequest.GET(urlFor("/api/foods/search?name=${urlEncode(keyword)}"))
             if (response.statusCode != 200) {
                 return
             }
@@ -300,13 +338,17 @@ class GiveLunchPeakTrafficTest {
     // -----------------------------
     // Helpers
     // -----------------------------
-    private HTTPResponse get(String pathAndQuery, String name, int... allowedStatus) {
-        HTTPResponse resp = authRequest.GET(urlFor(pathAndQuery))
+    private HTTPResponse get(HTTPRequest request, String pathAndQuery, String name, int... allowedStatus) {
+        HTTPResponse resp = request.GET(urlFor(pathAndQuery))
         assertStatusIn(resp, name, allowedStatus)
         return resp
     }
 
     private void setHeaders(HTTPRequest httpRequest, String scenario) {
+        setHeaders(httpRequest, scenario, null)
+    }
+
+    private void setHeaders(HTTPRequest httpRequest, String scenario, String csrfToken) {
         httpRequest.setHeaders([
                 new NVPair("Content-Type", "application/json"),
                 new NVPair("Accept", "application/json"),
@@ -316,11 +358,14 @@ class GiveLunchPeakTrafficTest {
         ] as NVPair[])
     }
     private static String headerValue(HTTPResponse response, String name) {
+        if (response == null || name == null) {
+            return null
+        }
+
         String direct = response.getHeader(name)
         if (direct != null) return direct
-        NVPair[] headers = response.getHeaders()
-        if (headers == null) return null
-        for (NVPair p : headers) {
+
+        for (NVPair p : responseHeaders(response)) {
             if (p != null && p.getName() != null && p.getName().equalsIgnoreCase(name)) {
                 return p.getValue()
             }
@@ -330,8 +375,78 @@ class GiveLunchPeakTrafficTest {
 
 
     private static void assertStatusIn(HTTPResponse response, String name, int... allowed) {
+        if (isAuthRedirect(response)) {
+            int count = authRedirectFailureCount.incrementAndGet()
+            Grinder.grinder.logger.warn("[AUTH_REDIRECT][{}] status={}, location={}, count={}",
+                    name, response.statusCode, headerValue(response, "Location"), count)
+            Assert.fail("${name} authentication redirect: status=${response.statusCode}, location=${headerValue(response, "Location")}")
+        }
+
         boolean ok = allowed.any { it == response.statusCode }
+        if (!ok) {
+            int count = functionalFailureCount.incrementAndGet()
+            Grinder.grinder.logger.warn("[FUNCTIONAL_FAILURE][{}] status={}, count={}", name, response.statusCode, count)
+        }
         Assert.assertTrue("${name} failed: status=${response.statusCode}", ok)
+    }
+
+    private static boolean isAuthRedirect(HTTPResponse response) {
+        if (response == null || response.statusCode != 302) {
+            return false
+        }
+        String location = headerValue(response, "Location") ?: ""
+        return location.contains("/login")
+    }
+
+    private static boolean hasJSessionIdCookie(HTTPResponse response) {
+        for (NVPair p : responseHeaders(response)) {
+            if (p != null && p.getName() != null && p.getName().equalsIgnoreCase("Set-Cookie") && p.getValue() != null && p.getValue().contains("JSESSIONID=")) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static NVPair[] responseHeaders(HTTPResponse response) {
+        if (response == null) {
+            return [] as NVPair[]
+        }
+
+        try {
+            if (response.metaClass.respondsTo(response, "listHeaders")) {
+                Object listed = response.listHeaders()
+                if (listed instanceof NVPair[]) {
+                    return listed as NVPair[]
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+
+        try {
+            if (response.metaClass.respondsTo(response, "getHeaders")) {
+                Object headers = response.getHeaders()
+                if (headers instanceof NVPair[]) {
+                    return headers as NVPair[]
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+
+        return [] as NVPair[]
+    }
+
+    private void ensureUserSession() {
+        if (!userSessionReady) {
+            loginAsUser()
+        }
+    }
+
+    private void ensureAdminSession() {
+        if (!adminSessionReady) {
+            loginAsAdmin()
+        }
     }
 
     private static String pick(String[] arr) {
