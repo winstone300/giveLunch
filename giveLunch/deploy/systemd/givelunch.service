@@ -1,0 +1,17 @@
+[Unit]
+Description=GiveLunch Spring Boot application
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/opt/givelunch/current
+EnvironmentFile=/etc/givelunch/givelunch.env
+ExecStart=/usr/bin/java -jar /opt/givelunch/current/giveLunch-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

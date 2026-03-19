@@ -18,3 +18,9 @@
 <img width="891" height="878" alt="image" src="https://github.com/user-attachments/assets/abf92f1e-2a3e-4a36-80bf-5614e7e74fc5" />
 
 </details>
+
+## AWS deployment
+
+- Guide: [giveLunch/docs/aws-deployment-guide.md](/D:/portPolio/giveLunch/giveLunch/docs/aws-deployment-guide.md)
+- Operations checklist: [giveLunch/docs/aws-operations-checklist.md](/D:/portPolio/giveLunch/giveLunch/docs/aws-operations-checklist.md)
+- Cost notes: [giveLunch/docs/aws-cost-estimate.md](/D:/portPolio/giveLunch/giveLunch/docs/aws-cost-estimate.md)

@@ -1,0 +1,77 @@
+name: AWS Deploy
+
+on:
+  push:
+    branches:
+      - aws_deploy
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: giveLunch
+    env:
+      APP_NAME: giveLunch-0.0.1-SNAPSHOT.jar
+      REMOTE_TMP_DIR: ~/givelunch-deploy
+      REMOTE_APP_DIR: /opt/givelunch
+      SERVICE_NAME: givelunch
+      HEALTHCHECK_URL: http://127.0.0.1/actuator/health
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Grant execute permission for Maven wrapper
+        run: chmod +x mvnw
+
+      - name: Run tests and build
+        run: ./mvnw clean verify
+
+      - name: Prepare deployment bundle
+        run: |
+          mkdir -p deploy_bundle/scripts
+          cp target/${APP_NAME} deploy_bundle/${APP_NAME}
+          cp deploy/scripts/*.sh deploy_bundle/scripts/
+
+      - name: Upload artifact to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "giveLunch/deploy_bundle/*"
+          target: ${{ env.REMOTE_TMP_DIR }}
+          strip_components: 1
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            chmod +x ${REMOTE_TMP_DIR}/scripts/*.sh
+            APP_DIR=${REMOTE_APP_DIR} SERVICE_NAME=${SERVICE_NAME} HEALTHCHECK_URL=${HEALTHCHECK_URL} \
+              ${REMOTE_TMP_DIR}/scripts/deploy.sh ${REMOTE_TMP_DIR}/${APP_NAME}
+
+      - name: Roll back on deployment failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            if [[ -f ${REMOTE_TMP_DIR}/scripts/rollback.sh ]]; then
+              chmod +x ${REMOTE_TMP_DIR}/scripts/*.sh
+              APP_DIR=${REMOTE_APP_DIR} SERVICE_NAME=${SERVICE_NAME} HEALTHCHECK_URL=${HEALTHCHECK_URL} \
+                ${REMOTE_TMP_DIR}/scripts/rollback.sh || true
+            fi

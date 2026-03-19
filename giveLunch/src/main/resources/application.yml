@@ -2,23 +2,16 @@ spring:
   application:
     name: giveLunch
   profiles:
-    active: local
-  data:
-    redis:
-      host: localhost
-      port: 6379
-  jpa:
-    hibernate:
-      ddl-auto: update
+    default: local
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,beans
+        include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
   metrics:
     tags:
       application: ${spring.application.name}
