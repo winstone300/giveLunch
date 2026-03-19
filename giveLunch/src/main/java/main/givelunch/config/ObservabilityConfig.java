@@ -35,7 +35,7 @@ public class ObservabilityConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "app.observability.sql", name = "enabled", havingValue = "true", matchIfMissing = true)
-    public BeanPostProcessor dataSourceProxyBeanPostProcessor(
+    public static BeanPostProcessor dataSourceProxyBeanPostProcessor(
             ObservabilityProperties properties,
             ObjectProvider<MeterRegistry> meterRegistryProvider) {
         return new BeanPostProcessor() {
