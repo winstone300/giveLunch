@@ -29,7 +29,6 @@ public class RankService {
     private final RedisScript<Number> incrementScript;
     private final RedisScript<List> topRanksScript;
     private final RedisScript<List> rebuildScript;
-    private final RedisScript<Number> cleanupScript;
 
     @Autowired
     public RankService(StringRedisTemplate redisTemplate, RankProperties rankProperties) {
@@ -39,8 +38,7 @@ public class RankService {
                 rankProperties,
                 createIncrementScript(),
                 createTopRanksScript(),
-                createRebuildScript(),
-                createCleanupScript()
+                createRebuildScript()
         );
     }
 
@@ -50,25 +48,25 @@ public class RankService {
             RankProperties rankProperties,
             RedisScript<Number> incrementScript,
             RedisScript<List> topRanksScript,
-            RedisScript<List> rebuildScript,
-            RedisScript<Number> cleanupScript) {
+            RedisScript<List> rebuildScript) {
         this.redisTemplate = redisTemplate;
         this.clock = clock;
         this.retentionSeconds = rankProperties.retention().toSeconds();
         this.incrementScript = incrementScript;
         this.topRanksScript = topRanksScript;
         this.rebuildScript = rebuildScript;
-        this.cleanupScript = cleanupScript;
     }
 
     public RankEntryDto increment(String name) {
         long now = Instant.now(clock).getEpochSecond();
+        long cutoff = now - retentionSeconds;
         Number score = redisTemplate.execute(
                 incrementScript,
                 List.of(RANK_KEY, RANK_EVENT_KEY),
                 name,
                 buildEventMember(name),
-                Long.toString(now)
+                Long.toString(now),
+                Long.toString(cutoff)
         );
 
         return new RankEntryDto(name, toLong(score, "increment"));
@@ -76,24 +74,14 @@ public class RankService {
 
     public List<RankEntryDto> getTopRanks(int limit) {
         int safeLimit = Math.max(1, limit);
+        long cutoff = Instant.now(clock).getEpochSecond() - retentionSeconds;
         List<?> rawResults = redisTemplate.execute(
                 topRanksScript,
-                List.of(RANK_KEY),
+                List.of(RANK_KEY, RANK_EVENT_KEY),
+                Long.toString(cutoff),
                 Integer.toString(safeLimit)
         );
         return toRankEntries(rawResults);
-    }
-
-    public long cleanupExpiredRanks() {
-        long cutoff = Instant.now(clock).getEpochSecond() - retentionSeconds;
-        Number removedCount = redisTemplate.execute(
-                cleanupScript,
-                List.of(RANK_KEY, RANK_EVENT_KEY),
-                Long.toString(cutoff)
-        );
-        long removed = toLong(removedCount, "cleanup");
-        log.info("Finished rank cleanup. removedEventCount={}, cutoffEpochSeconds={}", removed, cutoff);
-        return removed;
     }
 
     public RankRebuildResultDto rebuildRanks() {
@@ -136,12 +124,6 @@ public class RankService {
         return script;
     }
 
-    private static RedisScript<Number> createCleanupScript() {
-        DefaultRedisScript<Number> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("redis/rank-cleanup.lua"));
-        script.setResultType(Number.class);
-        return script;
-    }
 
     private long toLong(Number value, String operation) {
         if (value == null) {
