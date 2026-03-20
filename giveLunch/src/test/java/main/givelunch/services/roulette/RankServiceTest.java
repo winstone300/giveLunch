@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import main.givelunch.dto.rankDto.RankEntryDto;
+import main.givelunch.dto.rankDto.RankRebuildResultDto;
 import main.givelunch.properties.RankProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +38,12 @@ class RankServiceTest {
     @Mock
     private RedisScript<List> topRanksScript;
 
+    @Mock
+    private RedisScript<List> rebuildScript;
+
+    @Mock
+    private RedisScript<Number> cleanupScript;
+
     private RankService rankService;
 
     @BeforeEach
@@ -47,19 +54,20 @@ class RankServiceTest {
                 Clock.systemUTC(),
                 rankProperties,
                 incrementScript,
-                topRanksScript
+                topRanksScript,
+                rebuildScript,
+                cleanupScript
         );
     }
 
     @Test
-    @DisplayName("increment() - 만료 정리와 증가를 단일 스크립트로 실행하고 결과를 반환")
-    void increment_executesAtomicIncrementScript() {
+    @DisplayName("increment() - 증가 스크립트만 실행하고 결과를 반환")
+    void increment_executesIncrementScriptOnly() {
         String foodName = "비빔밥";
         doReturn(3L).when(redisTemplate).execute(
                 eq(incrementScript),
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
                 eq(foodName),
-                anyString(),
                 anyString(),
                 anyString()
         );
@@ -70,24 +78,20 @@ class RankServiceTest {
         ArgumentCaptor<String> foodCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> eventCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> nowCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> cutoffCaptor = ArgumentCaptor.forClass(String.class);
         verify(redisTemplate).execute(
                 eq(incrementScript),
                 keyCaptor.capture(),
                 foodCaptor.capture(),
                 eventCaptor.capture(),
-                nowCaptor.capture(),
-                cutoffCaptor.capture()
+                nowCaptor.capture()
         );
 
         assertThat(keyCaptor.getValue()).containsExactly(RankService.RANK_KEY, RankService.RANK_EVENT_KEY);
         assertThat(foodCaptor.getValue()).isEqualTo(foodName);
         assertThat(eventCaptor.getValue()).endsWith(":" + foodName);
         assertThat(nowCaptor.getValue()).matches("\\d+");
-        assertThat(cutoffCaptor.getValue()).matches("\\d+");
-        assertThat(Long.parseLong(nowCaptor.getValue()) - Long.parseLong(cutoffCaptor.getValue()))
-                .isEqualTo(Duration.ofHours(24).toSeconds());
         assertThat(result).isEqualTo(new RankEntryDto(foodName, 3L));
+        verify(redisTemplate, never()).execute(eq(cleanupScript), any(), any());
     }
 
     @Test
@@ -98,7 +102,6 @@ class RankServiceTest {
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
                 eq("김치찌개"),
                 anyString(),
-                anyString(),
                 anyString()
         );
 
@@ -108,8 +111,8 @@ class RankServiceTest {
     }
 
     @Test
-    @DisplayName("increment() - 현재 시각과 retention 기반 cutoff를 증가 스크립트에 전달")
-    void increment_passesNowAndCutoffToIncrementScript() {
+    @DisplayName("increment() - 현재 시각을 증가 스크립트에 전달")
+    void increment_passesNowToIncrementScript() {
         Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
         RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
         rankService = new RankService(
@@ -117,27 +120,26 @@ class RankServiceTest {
                 Clock.fixed(fixedTime, ZoneOffset.UTC),
                 rankProperties,
                 incrementScript,
-                topRanksScript
+                topRanksScript,
+                rebuildScript,
+                cleanupScript
         );
         doReturn(1L).when(redisTemplate).execute(
                 eq(incrementScript),
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
                 eq("제육볶음"),
                 anyString(),
-                eq(Long.toString(fixedTime.getEpochSecond())),
-                eq(Long.toString(fixedTime.minus(Duration.ofHours(24)).getEpochSecond()))
+                eq(Long.toString(fixedTime.getEpochSecond()))
         );
 
         rankService.increment("제육볶음");
 
-        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
         verify(redisTemplate).execute(
                 eq(incrementScript),
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
                 eq("제육볶음"),
                 anyString(),
-                eq(Long.toString(fixedTime.getEpochSecond())),
-                eq(Long.toString(cutoffEpochSeconds))
+                eq(Long.toString(fixedTime.getEpochSecond()))
         );
     }
 
@@ -146,8 +148,7 @@ class RankServiceTest {
     void getTopRanks_normalizesLimitWhenLessThanOne() {
         doReturn(List.of("라면", 3L)).when(redisTemplate).execute(
                 eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
+                eq(List.of(RankService.RANK_KEY)),
                 eq("1")
         );
 
@@ -155,10 +156,10 @@ class RankServiceTest {
 
         verify(redisTemplate).execute(
                 eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
+                eq(List.of(RankService.RANK_KEY)),
                 eq("1")
         );
+        verify(redisTemplate, never()).execute(eq(cleanupScript), any(), any());
         assertThat(result).containsExactly(new RankEntryDto("라면", 3L));
     }
 
@@ -167,8 +168,7 @@ class RankServiceTest {
     void getTopRanks_returnsEmptyListWhenNoResult() {
         doReturn(List.of()).when(redisTemplate).execute(
                 eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
+                eq(List.of(RankService.RANK_KEY)),
                 eq("3")
         );
 
@@ -182,8 +182,7 @@ class RankServiceTest {
     void getTopRanks_mapsScriptResultsToDto() {
         doReturn(List.of("우동", 0L, "돈까스", 7L)).when(redisTemplate).execute(
                 eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
+                eq(List.of(RankService.RANK_KEY)),
                 eq("2")
         );
 
@@ -196,37 +195,11 @@ class RankServiceTest {
     }
 
     @Test
-    @DisplayName("getTopRanks() - 현재 시각과 limit을 조회 스크립트에 전달")
-    void getTopRanks_passesCutoffAndLimitToTopScript() {
-        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
-        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
-        rankService = new RankService(
-                redisTemplate,
-                Clock.fixed(fixedTime, ZoneOffset.UTC),
-                rankProperties,
-                incrementScript,
-                topRanksScript
-        );
-        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
-        doReturn(List.of("김치찌개", 5L)).when(redisTemplate).execute(
-                eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                eq(Long.toString(cutoffEpochSeconds)),
-                eq("5")
-        );
-
-        List<RankEntryDto> result = rankService.getTopRanks(5);
-
-        assertThat(result).containsExactly(new RankEntryDto("김치찌개", 5L));
-    }
-
-    @Test
     @DisplayName("getTopRanks() - malformed 결과면 예외")
     void getTopRanks_throwsWhenScriptReturnsMalformedResults() {
         doReturn(List.of("우동")).when(redisTemplate).execute(
                 eq(topRanksScript),
-                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
+                eq(List.of(RankService.RANK_KEY)),
                 eq("1")
         );
 
@@ -236,18 +209,87 @@ class RankServiceTest {
     }
 
     @Test
-    @DisplayName("getTopRanks() - 빈 결과면 증가 스크립트 호출 없음")
-    void getTopRanks_doesNotMutateWhenNoRanks() {
-        doReturn(List.of()).when(redisTemplate).execute(
-                eq(topRanksScript),
+    @DisplayName("cleanupExpiredRanks() - retention 기준 cutoff로 cleanup 스크립트를 실행")
+    void cleanupExpiredRanks_runsCleanupScriptWithCutoff() {
+        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(
+                redisTemplate,
+                Clock.fixed(fixedTime, ZoneOffset.UTC),
+                rankProperties,
+                incrementScript,
+                topRanksScript,
+                rebuildScript,
+                cleanupScript
+        );
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        doReturn(4L).when(redisTemplate).execute(
+                eq(cleanupScript),
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
-                eq("3")
+                eq(Long.toString(cutoffEpochSeconds))
         );
 
-        List<RankEntryDto> result = rankService.getTopRanks(3);
+        long removedCount = rankService.cleanupExpiredRanks();
 
-        assertThat(result).isEmpty();
-        verify(redisTemplate, never()).execute(eq(incrementScript), any(), any(), any(), any());
+        assertThat(removedCount).isEqualTo(4L);
+        verify(redisTemplate).execute(
+                eq(cleanupScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq(Long.toString(cutoffEpochSeconds))
+        );
+    }
+
+    @Test
+    @DisplayName("cleanupExpiredRanks() - null 반환이면 예외")
+    void cleanupExpiredRanks_throwsWhenScriptReturnsNull() {
+        doReturn(null).when(redisTemplate).execute(
+                eq(cleanupScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString()
+        );
+
+        assertThatThrownBy(() -> rankService.cleanupExpiredRanks())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cleanup");
+    }
+
+    @Test
+    @DisplayName("rebuildRanks() - retention 창 기준 복구 결과를 반환")
+    void rebuildRanks_returnsRebuildResult() {
+        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(
+                redisTemplate,
+                Clock.fixed(fixedTime, ZoneOffset.UTC),
+                rankProperties,
+                incrementScript,
+                topRanksScript,
+                rebuildScript,
+                cleanupScript
+        );
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        doReturn(List.of(3L, 2L)).when(redisTemplate).execute(
+                eq(rebuildScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq(Long.toString(cutoffEpochSeconds))
+        );
+
+        RankRebuildResultDto result = rankService.rebuildRanks();
+
+        assertThat(result).isEqualTo(new RankRebuildResultDto(3L, 2L, cutoffEpochSeconds));
+    }
+
+    @Test
+    @DisplayName("rebuildRanks() - malformed 결과면 예외")
+    void rebuildRanks_throwsWhenScriptReturnsMalformedResults() {
+        doReturn(List.of(1L)).when(redisTemplate).execute(
+                eq(rebuildScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString()
+        );
+
+        assertThatThrownBy(() -> rankService.rebuildRanks())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("malformed");
     }
 }
