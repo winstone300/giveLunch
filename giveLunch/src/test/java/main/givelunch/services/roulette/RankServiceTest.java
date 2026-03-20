@@ -1,20 +1,19 @@
 package main.givelunch.services.roulette;
 
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-
 import main.givelunch.dto.rankDto.RankEntryDto;
 import main.givelunch.properties.RankProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,9 +23,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 
 @ExtendWith(MockitoExtension.class)
 class RankServiceTest {
@@ -34,144 +32,222 @@ class RankServiceTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
-    private ZSetOperations<String, String> zSetOperations;
+    private RedisScript<Number> incrementScript;
+
+    @Mock
+    private RedisScript<List> topRanksScript;
 
     private RankService rankService;
 
     @BeforeEach
     void setUp() {
         RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
-        rankService = new RankService(redisTemplate, Clock.systemUTC(), rankProperties);
-    }
-
-    private void stubNoExpiredEvents() {
-        when(zSetOperations.rangeByScore(eq("roulette:food:rank:events"), anyDouble(), anyDouble()))
-                .thenReturn(Set.of());
+        rankService = new RankService(
+                redisTemplate,
+                Clock.systemUTC(),
+                rankProperties,
+                incrementScript,
+                topRanksScript
+        );
     }
 
     @Test
-    @DisplayName("increment() - redis score가 null이면 1로 처리")
-    void increment_returnsOneWhenRedisScoreIsNull() {
-        // given
+    @DisplayName("increment() - 만료 정리와 증가를 단일 스크립트로 실행하고 결과를 반환")
+    void increment_executesAtomicIncrementScript() {
         String foodName = "비빔밥";
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        stubNoExpiredEvents();
-        when(zSetOperations.incrementScore("roulette:food:rank", foodName, 1)).thenReturn(null);
+        doReturn(3L).when(redisTemplate).execute(
+                eq(incrementScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq(foodName),
+                anyString(),
+                anyString(),
+                anyString()
+        );
 
-        // when
         RankEntryDto result = rankService.increment(foodName);
 
-        // then
-        assertThat(result.name()).isEqualTo(foodName);
-        assertThat(result.count()).isEqualTo(1L);
+        ArgumentCaptor<List<String>> keyCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<String> foodCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> eventCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> nowCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> cutoffCaptor = ArgumentCaptor.forClass(String.class);
+        verify(redisTemplate).execute(
+                eq(incrementScript),
+                keyCaptor.capture(),
+                foodCaptor.capture(),
+                eventCaptor.capture(),
+                nowCaptor.capture(),
+                cutoffCaptor.capture()
+        );
+
+        assertThat(keyCaptor.getValue()).containsExactly(RankService.RANK_KEY, RankService.RANK_EVENT_KEY);
+        assertThat(foodCaptor.getValue()).isEqualTo(foodName);
+        assertThat(eventCaptor.getValue()).endsWith(":" + foodName);
+        assertThat(nowCaptor.getValue()).matches("\\d+");
+        assertThat(cutoffCaptor.getValue()).matches("\\d+");
+        assertThat(Long.parseLong(nowCaptor.getValue()) - Long.parseLong(cutoffCaptor.getValue()))
+                .isEqualTo(Duration.ofHours(24).toSeconds());
+        assertThat(result).isEqualTo(new RankEntryDto(foodName, 3L));
     }
 
     @Test
-    @DisplayName("increment() - redis score를 long으로 변환해 반환")
-    void increment_returnsScoreAsLong() {
-        // given
-        String foodName = "김치찌개";
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        stubNoExpiredEvents();
-        when(zSetOperations.incrementScore("roulette:food:rank", foodName, 1)).thenReturn(5.0);
+    @DisplayName("increment() - 증가 스크립트가 null을 반환하면 예외")
+    void increment_throwsWhenScriptReturnsNull() {
+        doReturn(null).when(redisTemplate).execute(
+                eq(incrementScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq("김치찌개"),
+                anyString(),
+                anyString(),
+                anyString()
+        );
 
-        // when
-        RankEntryDto result = rankService.increment(foodName);
-
-        // then
-        assertThat(result.name()).isEqualTo(foodName);
-        assertThat(result.count()).isEqualTo(5L);
+        assertThatThrownBy(() -> rankService.increment("김치찌개"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("returned null");
     }
 
     @Test
-    @DisplayName("getTopRanks() - limit이 1 미만이면 1로 보정하여 조회")
+    @DisplayName("increment() - 현재 시각과 retention 기반 cutoff를 증가 스크립트에 전달")
+    void increment_passesNowAndCutoffToIncrementScript() {
+        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(
+                redisTemplate,
+                Clock.fixed(fixedTime, ZoneOffset.UTC),
+                rankProperties,
+                incrementScript,
+                topRanksScript
+        );
+        doReturn(1L).when(redisTemplate).execute(
+                eq(incrementScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq("제육볶음"),
+                anyString(),
+                eq(Long.toString(fixedTime.getEpochSecond())),
+                eq(Long.toString(fixedTime.minus(Duration.ofHours(24)).getEpochSecond()))
+        );
+
+        rankService.increment("제육볶음");
+
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        verify(redisTemplate).execute(
+                eq(incrementScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq("제육볶음"),
+                anyString(),
+                eq(Long.toString(fixedTime.getEpochSecond())),
+                eq(Long.toString(cutoffEpochSeconds))
+        );
+    }
+
+    @Test
+    @DisplayName("getTopRanks() - limit이 1 미만이면 1로 보정하여 단일 스크립트로 조회")
     void getTopRanks_normalizesLimitWhenLessThanOne() {
-        // given
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        stubNoExpiredEvents();
-        when(zSetOperations.reverseRangeWithScores(eq("roulette:food:rank"), anyLong(), anyLong()))
-                .thenReturn(Set.of(new DefaultTypedTuple<>("라면", 3.0)));
+        doReturn(List.of("라면", 3L)).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("1")
+        );
 
-        // when
         List<RankEntryDto> result = rankService.getTopRanks(0);
 
-        // then
-        verify(zSetOperations).reverseRangeWithScores("roulette:food:rank", 0, 0);
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).name()).isEqualTo("라면");
-        assertThat(result.get(0).count()).isEqualTo(3L);
+        verify(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("1")
+        );
+        assertThat(result).containsExactly(new RankEntryDto("라면", 3L));
     }
 
     @Test
     @DisplayName("getTopRanks() - 결과가 비어있으면 빈 리스트 반환")
     void getTopRanks_returnsEmptyListWhenNoResult() {
-        // given
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        stubNoExpiredEvents();
-        when(zSetOperations.reverseRangeWithScores("roulette:food:rank", 0, 2)).thenReturn(null);
+        doReturn(List.of()).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("3")
+        );
 
-        // when
         List<RankEntryDto> result = rankService.getTopRanks(3);
 
-        // then
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("getTopRanks() - score null은 0으로 변환")
-    void getTopRanks_convertsNullScoreToZero() {
-        // given
-        Set<ZSetOperations.TypedTuple<String>> tuples = new LinkedHashSet<>();
-        tuples.add(new DefaultTypedTuple<>("우동", null));
-        tuples.add(new DefaultTypedTuple<>("돈까스", 7.0));
+    @DisplayName("getTopRanks() - 스크립트 결과를 DTO로 변환")
+    void getTopRanks_mapsScriptResultsToDto() {
+        doReturn(List.of("우동", 0L, "돈까스", 7L)).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("2")
+        );
 
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        stubNoExpiredEvents();
-        when(zSetOperations.reverseRangeWithScores("roulette:food:rank", 0, 1)).thenReturn(tuples);
-
-        // when
         List<RankEntryDto> result = rankService.getTopRanks(2);
 
-        // then
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("우동");
-        assertThat(result.get(0).count()).isEqualTo(0L);
-        assertThat(result.get(1).name()).isEqualTo("돈까스");
-        assertThat(result.get(1).count()).isEqualTo(7L);
+        assertThat(result).containsExactly(
+                new RankEntryDto("우동", 0L),
+                new RankEntryDto("돈까스", 7L)
+        );
     }
 
     @Test
-    @DisplayName("increment()요청시 24시간 지난 이벤트를 제거하고 점수를 감소시킨다")
-    void increment_removesExpiredEventsBeforeScoring() {
-        // given
+    @DisplayName("getTopRanks() - 현재 시각과 limit을 조회 스크립트에 전달")
+    void getTopRanks_passesCutoffAndLimitToTopScript() {
         Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
         RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
-        rankService = new RankService(redisTemplate, Clock.fixed(fixedTime, ZoneOffset.UTC), rankProperties);
-
-        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
-        when(zSetOperations.rangeByScore("roulette:food:rank:events", 0, cutoffEpochSeconds))
-                .thenReturn(Set.of("uuid-1:김밥", "uuid-2:김밥", "uuid-3:라면"));
-        when(zSetOperations.incrementScore("roulette:food:rank", "김밥", -2)).thenReturn(0.0);
-        when(zSetOperations.incrementScore("roulette:food:rank", "라면", -1)).thenReturn(4.0);
-        when(zSetOperations.incrementScore("roulette:food:rank", "제육볶음", 1)).thenReturn(3.0);
-
-        // when
-        RankEntryDto result = rankService.increment("제육볶음");
-
-        // then
-        ArgumentCaptor<Object> expiredMemberCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(zSetOperations).remove(
-                eq("roulette:food:rank:events"),
-                expiredMemberCaptor.capture(),
-                expiredMemberCaptor.capture(),
-                expiredMemberCaptor.capture()
+        rankService = new RankService(
+                redisTemplate,
+                Clock.fixed(fixedTime, ZoneOffset.UTC),
+                rankProperties,
+                incrementScript,
+                topRanksScript
         );
-        assertThat(expiredMemberCaptor.getAllValues())
-                .containsExactlyInAnyOrder("uuid-1:김밥", "uuid-2:김밥", "uuid-3:라면");
-        verify(zSetOperations).incrementScore("roulette:food:rank", "김밥", -2);
-        verify(zSetOperations).remove("roulette:food:rank", "김밥");
-        verify(zSetOperations).incrementScore("roulette:food:rank", "라면", -1);
-        assertThat(result.count()).isEqualTo(3L);
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        doReturn(List.of("김치찌개", 5L)).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                eq(Long.toString(cutoffEpochSeconds)),
+                eq("5")
+        );
+
+        List<RankEntryDto> result = rankService.getTopRanks(5);
+
+        assertThat(result).containsExactly(new RankEntryDto("김치찌개", 5L));
+    }
+
+    @Test
+    @DisplayName("getTopRanks() - malformed 결과면 예외")
+    void getTopRanks_throwsWhenScriptReturnsMalformedResults() {
+        doReturn(List.of("우동")).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("1")
+        );
+
+        assertThatThrownBy(() -> rankService.getTopRanks(1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("malformed");
+    }
+
+    @Test
+    @DisplayName("getTopRanks() - 빈 결과면 증가 스크립트 호출 없음")
+    void getTopRanks_doesNotMutateWhenNoRanks() {
+        doReturn(List.of()).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("3")
+        );
+
+        List<RankEntryDto> result = rankService.getTopRanks(3);
+
+        assertThat(result).isEmpty();
+        verify(redisTemplate, never()).execute(eq(incrementScript), any(), any(), any(), any());
     }
 }
