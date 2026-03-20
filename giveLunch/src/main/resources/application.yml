@@ -30,6 +30,8 @@ management:
         http.server.requests: 100ms,300ms,500ms,1s,3s
 
 app:
+  agent-auth:
+    api-key: ${APP_AGENT_AUTH_API_KEY:}
   observability:
     enabled: true
     run-id-header: X-LoadTest-Run-Id
