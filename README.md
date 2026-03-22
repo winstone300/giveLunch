@@ -1,20 +1,6 @@
-<details>
-<summary> <b>데이터 흐름도</b>  </summary>
-
-## 회원가입 흐름
-
-<img width="866" height="962" alt="image" src="https://github.com/user-attachments/assets/de3cdaf8-2fe4-4e8f-a075-96a8574b886d" />
+# API 목록
+<img width="2167" height="1136" alt="image" src="https://github.com/user-attachments/assets/28404c8d-878e-4043-8455-44a36cb948b5" />
+<img width="2164" height="1131" alt="image" src="https://github.com/user-attachments/assets/9a59f158-109c-448c-a97d-399d1e8f8b84" />
+<img width="2158" height="354" alt="image" src="https://github.com/user-attachments/assets/61f5ad7d-db9d-49de-b90c-a49573331097" />
 
 
-## 룰렛 메뉴 추가/삭제 흐름
-
-<img width="640" height="810" alt="image" src="https://github.com/user-attachments/assets/89c942cf-45f1-446e-a13e-398f16c4a6bd" />
-
-## 룰렛 화면 렌더링 흐름
-
-<img width="941" height="903" alt="image" src="https://github.com/user-attachments/assets/02ed0836-34c1-40a2-acff-2161c3a972be" />
-
-## 관리자 음식 관리 흐름
-<img width="891" height="878" alt="image" src="https://github.com/user-attachments/assets/abf92f1e-2a3e-4a36-80bf-5614e7e74fc5" />
-
-</details>
