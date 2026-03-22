@@ -201,6 +201,24 @@ class RankServiceTest {
     }
 
     @Test
+    @DisplayName("getTopRanks() - Redis가 score를 문자열로 반환해도 DTO로 변환")
+    void getTopRanks_mapsStringScoresToDto() {
+        doReturn(List.of("우동", "0", "돈까스", "7")).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("2")
+        );
+
+        List<RankEntryDto> result = rankService.getTopRanks(2);
+
+        assertThat(result).containsExactly(
+                new RankEntryDto("우동", 0L),
+                new RankEntryDto("돈까스", 7L)
+        );
+    }
+
+    @Test
     @DisplayName("getTopRanks() - 현재 시각과 limit을 조회 스크립트에 전달")
     void getTopRanks_passesCutoffAndLimitToTopScript() {
         Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");

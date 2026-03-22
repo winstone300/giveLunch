@@ -147,10 +147,7 @@ public class RankService {
             if (!(rawName instanceof String name)) {
                 throw new IllegalStateException("Redis rank top script returned non-string name");
             }
-            if (!(rawScore instanceof Number score)) {
-                throw new IllegalStateException("Redis rank top script returned non-numeric score");
-            }
-            entries.add(new RankEntryDto(name, score.longValue()));
+            entries.add(new RankEntryDto(name, parseLong(rawScore, "Redis rank top script returned non-numeric score")));
         }
         return entries;
     }
@@ -162,12 +159,23 @@ public class RankService {
 
         List<Long> values = new ArrayList<>(rawResults.size());
         for (Object rawResult : rawResults) {
-            if (!(rawResult instanceof Number number)) {
-                throw new IllegalStateException("Redis rank " + operation + " script returned non-numeric result");
-            }
-            values.add(number.longValue());
+            values.add(parseLong(rawResult, "Redis rank " + operation + " script returned non-numeric result"));
         }
         return values;
+    }
+
+    private long parseLong(Object rawValue, String errorMessage) {
+        if (rawValue instanceof Number number) {
+            return number.longValue();
+        }
+        if (rawValue instanceof String stringValue) {
+            try {
+                return Long.parseLong(stringValue);
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException(errorMessage, e);
+            }
+        }
+        throw new IllegalStateException(errorMessage);
     }
 
     private String buildEventMember(String name) {

@@ -36,9 +36,8 @@ class RankControllerIntegrationTest {
     private main.givelunch.services.roulette.RankService rankService;
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /api/ranks: 공백 제거 후 랭크를 증가시켜 반환")
-    void recordRankReturnsIncrementedRank() throws Exception {
+    @DisplayName("POST /api/ranks: 비로그인 사용자도 공백 제거 후 랭크를 증가시켜 반환")
+    void recordRankReturnsIncrementedRankForGuest() throws Exception {
         when(rankService.increment(eq("비빔밥"))).thenReturn(new RankEntryDto("비빔밥", 3L));
 
         mockMvc.perform(post("/api/ranks")
@@ -51,8 +50,7 @@ class RankControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /api/ranks: 이름 누락 시 400 반환")
+    @DisplayName("POST /api/ranks: 비로그인 요청에서도 이름 누락 시 400 반환")
     void recordRankReturnsBadRequestWhenNameMissing() throws Exception {
         mockMvc.perform(post("/api/ranks")
                         .with(csrf())
@@ -64,8 +62,7 @@ class RankControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /api/ranks: 본문 JSON 형식이 잘못되면 VALIDATION_ERROR 반환")
+    @DisplayName("POST /api/ranks: 비로그인 요청에서도 본문 JSON 형식이 잘못되면 VALIDATION_ERROR 반환")
     void recordRankReturnsValidationErrorWhenJsonMalformed() throws Exception {
         mockMvc.perform(post("/api/ranks")
                         .with(csrf())
@@ -77,9 +74,8 @@ class RankControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("GET /api/ranks/top: limit 범위를 1~5로 보정해 랭킹 반환")
-    void topRanksAppliesSafeLimitAndReturnsRanks() throws Exception {
+    @DisplayName("GET /api/ranks/top: 비로그인 사용자도 limit 범위를 1~5로 보정해 랭킹 반환")
+    void topRanksAppliesSafeLimitAndReturnsRanksForGuest() throws Exception {
         when(rankService.getTopRanks(eq(5))).thenReturn(List.of(
                 new RankEntryDto("비빔밥", 10L),
                 new RankEntryDto("김치찌개", 7L)
@@ -94,8 +90,7 @@ class RankControllerIntegrationTest {
 
 
     @Test
-    @WithMockUser
-    @DisplayName("GET /api/ranks/top: limit가 0이면 1로 보정")
+    @DisplayName("GET /api/ranks/top: 비로그인 요청에서 limit가 0이면 1로 보정")
     void topRanksClampsLimitToOne() throws Exception {
         when(rankService.getTopRanks(eq(1))).thenReturn(List.of(new RankEntryDto("비빔밥", 1L)));
 
@@ -107,8 +102,7 @@ class RankControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("GET /api/ranks/top: limit 미지정이면 기본값 5 사용")
+    @DisplayName("GET /api/ranks/top: 비로그인 요청에서 limit 미지정이면 기본값 5 사용")
     void topRanksUsesDefaultLimitWhenMissing() throws Exception {
         when(rankService.getTopRanks(eq(5))).thenReturn(List.of(new RankEntryDto("김치찌개", 2L)));
 

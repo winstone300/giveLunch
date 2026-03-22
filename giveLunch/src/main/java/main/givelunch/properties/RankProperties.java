@@ -6,6 +6,6 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 @ConfigurationProperties("app.rank")
 public record RankProperties(
-        @DefaultValue("24") Duration retention
+        @DefaultValue("24h") Duration retention
 ) {
 }
