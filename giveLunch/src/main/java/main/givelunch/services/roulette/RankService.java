@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import main.givelunch.dto.rankDto.RankEntryDto;
+import main.givelunch.dto.rankDto.RankRebuildResultDto;
 import main.givelunch.properties.RankProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -13,17 +14,21 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class RankService {
     static final String RANK_KEY = "roulette:food:rank";
     static final String RANK_EVENT_KEY = "roulette:food:rank:events";
+    private static final Logger log = LoggerFactory.getLogger(RankService.class);
 
     private final StringRedisTemplate redisTemplate;
     private final Clock clock;
     private final long retentionSeconds;
     private final RedisScript<Number> incrementScript;
     private final RedisScript<List> topRanksScript;
+    private final RedisScript<List> rebuildScript;
 
     @Autowired
     public RankService(StringRedisTemplate redisTemplate, RankProperties rankProperties) {
@@ -32,7 +37,8 @@ public class RankService {
                 Clock.systemUTC(),
                 rankProperties,
                 createIncrementScript(),
-                createTopRanksScript()
+                createTopRanksScript(),
+                createRebuildScript()
         );
     }
 
@@ -41,12 +47,14 @@ public class RankService {
             Clock clock,
             RankProperties rankProperties,
             RedisScript<Number> incrementScript,
-            RedisScript<List> topRanksScript) {
+            RedisScript<List> topRanksScript,
+            RedisScript<List> rebuildScript) {
         this.redisTemplate = redisTemplate;
         this.clock = clock;
         this.retentionSeconds = rankProperties.retention().toSeconds();
         this.incrementScript = incrementScript;
         this.topRanksScript = topRanksScript;
+        this.rebuildScript = rebuildScript;
     }
 
     public RankEntryDto increment(String name) {
@@ -76,6 +84,25 @@ public class RankService {
         return toRankEntries(rawResults);
     }
 
+    public RankRebuildResultDto rebuildRanks() {
+        long cutoff = Instant.now(clock).getEpochSecond() - retentionSeconds;
+        log.info("Starting manual rank rebuild. cutoffEpochSeconds={}", cutoff);
+        List<?> rawResults = redisTemplate.execute(
+                rebuildScript,
+                List.of(RANK_KEY, RANK_EVENT_KEY),
+                Long.toString(cutoff)
+        );
+        List<Long> counts = toLongList(rawResults, "rebuild");
+        RankRebuildResultDto result = new RankRebuildResultDto(counts.get(0), counts.get(1), cutoff);
+        log.info(
+                "Finished manual rank rebuild. rebuiltEventCount={}, rebuiltFoodCount={}, cutoffEpochSeconds={}",
+                result.rebuiltEventCount(),
+                result.rebuiltFoodCount(),
+                result.cutoffEpochSeconds()
+        );
+        return result;
+    }
+
     private static RedisScript<Number> createIncrementScript() {
         DefaultRedisScript<Number> script = new DefaultRedisScript<>();
         script.setLocation(new ClassPathResource("redis/rank-increment.lua"));
@@ -89,6 +116,14 @@ public class RankService {
         script.setResultType(List.class);
         return script;
     }
+
+    private static RedisScript<List> createRebuildScript() {
+        DefaultRedisScript<List> script = new DefaultRedisScript<>();
+        script.setLocation(new ClassPathResource("redis/rank-rebuild.lua"));
+        script.setResultType(List.class);
+        return script;
+    }
+
 
     private long toLong(Number value, String operation) {
         if (value == null) {
@@ -112,12 +147,35 @@ public class RankService {
             if (!(rawName instanceof String name)) {
                 throw new IllegalStateException("Redis rank top script returned non-string name");
             }
-            if (!(rawScore instanceof Number score)) {
-                throw new IllegalStateException("Redis rank top script returned non-numeric score");
-            }
-            entries.add(new RankEntryDto(name, score.longValue()));
+            entries.add(new RankEntryDto(name, parseLong(rawScore, "Redis rank top script returned non-numeric score")));
         }
         return entries;
+    }
+
+    private List<Long> toLongList(List<?> rawResults, String operation) {
+        if (rawResults == null || rawResults.size() != 2) {
+            throw new IllegalStateException("Redis rank " + operation + " script returned malformed results");
+        }
+
+        List<Long> values = new ArrayList<>(rawResults.size());
+        for (Object rawResult : rawResults) {
+            values.add(parseLong(rawResult, "Redis rank " + operation + " script returned non-numeric result"));
+        }
+        return values;
+    }
+
+    private long parseLong(Object rawValue, String errorMessage) {
+        if (rawValue instanceof Number number) {
+            return number.longValue();
+        }
+        if (rawValue instanceof String stringValue) {
+            try {
+                return Long.parseLong(stringValue);
+            } catch (NumberFormatException e) {
+                throw new IllegalStateException(errorMessage, e);
+            }
+        }
+        throw new IllegalStateException(errorMessage);
     }
 
     private String buildEventMember(String name) {

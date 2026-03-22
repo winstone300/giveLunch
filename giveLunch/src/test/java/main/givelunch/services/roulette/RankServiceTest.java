@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.Clock;
@@ -15,6 +14,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import main.givelunch.dto.rankDto.RankEntryDto;
+import main.givelunch.dto.rankDto.RankRebuildResultDto;
 import main.givelunch.properties.RankProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +37,9 @@ class RankServiceTest {
     @Mock
     private RedisScript<List> topRanksScript;
 
+    @Mock
+    private RedisScript<List> rebuildScript;
+
     private RankService rankService;
 
     @BeforeEach
@@ -47,7 +50,8 @@ class RankServiceTest {
                 Clock.systemUTC(),
                 rankProperties,
                 incrementScript,
-                topRanksScript
+                topRanksScript,
+                rebuildScript
         );
     }
 
@@ -117,7 +121,8 @@ class RankServiceTest {
                 Clock.fixed(fixedTime, ZoneOffset.UTC),
                 rankProperties,
                 incrementScript,
-                topRanksScript
+                topRanksScript,
+                rebuildScript
         );
         doReturn(1L).when(redisTemplate).execute(
                 eq(incrementScript),
@@ -196,6 +201,24 @@ class RankServiceTest {
     }
 
     @Test
+    @DisplayName("getTopRanks() - Redis가 score를 문자열로 반환해도 DTO로 변환")
+    void getTopRanks_mapsStringScoresToDto() {
+        doReturn(List.of("우동", "0", "돈까스", "7")).when(redisTemplate).execute(
+                eq(topRanksScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString(),
+                eq("2")
+        );
+
+        List<RankEntryDto> result = rankService.getTopRanks(2);
+
+        assertThat(result).containsExactly(
+                new RankEntryDto("우동", 0L),
+                new RankEntryDto("돈까스", 7L)
+        );
+    }
+
+    @Test
     @DisplayName("getTopRanks() - 현재 시각과 limit을 조회 스크립트에 전달")
     void getTopRanks_passesCutoffAndLimitToTopScript() {
         Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
@@ -205,7 +228,8 @@ class RankServiceTest {
                 Clock.fixed(fixedTime, ZoneOffset.UTC),
                 rankProperties,
                 incrementScript,
-                topRanksScript
+                topRanksScript,
+                rebuildScript
         );
         long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
         doReturn(List.of("김치찌개", 5L)).when(redisTemplate).execute(
@@ -236,18 +260,41 @@ class RankServiceTest {
     }
 
     @Test
-    @DisplayName("getTopRanks() - 빈 결과면 증가 스크립트 호출 없음")
-    void getTopRanks_doesNotMutateWhenNoRanks() {
-        doReturn(List.of()).when(redisTemplate).execute(
-                eq(topRanksScript),
+    @DisplayName("rebuildRanks() - retention 창 기준 복구 결과를 반환")
+    void rebuildRanks_returnsRebuildResult() {
+        Instant fixedTime = Instant.parse("2026-01-02T00:00:00Z");
+        RankProperties rankProperties = new RankProperties(Duration.ofHours(24));
+        rankService = new RankService(
+                redisTemplate,
+                Clock.fixed(fixedTime, ZoneOffset.UTC),
+                rankProperties,
+                incrementScript,
+                topRanksScript,
+                rebuildScript
+        );
+        long cutoffEpochSeconds = fixedTime.minus(Duration.ofHours(24)).getEpochSecond();
+        doReturn(List.of(3L, 2L)).when(redisTemplate).execute(
+                eq(rebuildScript),
                 eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
-                anyString(),
-                eq("3")
+                eq(Long.toString(cutoffEpochSeconds))
         );
 
-        List<RankEntryDto> result = rankService.getTopRanks(3);
+        RankRebuildResultDto result = rankService.rebuildRanks();
 
-        assertThat(result).isEmpty();
-        verify(redisTemplate, never()).execute(eq(incrementScript), any(), any(), any(), any());
+        assertThat(result).isEqualTo(new RankRebuildResultDto(3L, 2L, cutoffEpochSeconds));
+    }
+
+    @Test
+    @DisplayName("rebuildRanks() - malformed 결과면 예외")
+    void rebuildRanks_throwsWhenScriptReturnsMalformedResults() {
+        doReturn(List.of(1L)).when(redisTemplate).execute(
+                eq(rebuildScript),
+                eq(List.of(RankService.RANK_KEY, RankService.RANK_EVENT_KEY)),
+                anyString()
+        );
+
+        assertThatThrownBy(() -> rankService.rebuildRanks())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("malformed");
     }
 }

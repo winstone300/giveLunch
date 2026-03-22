@@ -546,7 +546,7 @@
     `;
     }
 
-    function recordRank() {
+    async function recordRank() {
         if (!lastWinnerName) {
             return;
         }
@@ -554,17 +554,21 @@
         if (!normalizedName) {
             return;
         }
-        fetch('/api/ranks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
-            body: JSON.stringify({ name: normalizedName })
-        })
-            .then(() => {
-                showSpinButton();
-            })
-            .catch(() => {
-                showSpinButton();
+        try {
+            const response = await fetch('/api/ranks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...buildCsrfHeaders() },
+                body: JSON.stringify({ name: normalizedName })
             });
+            if (!response.ok) {
+                return;
+            }
+            refreshRankList().then(() => {
+                renderRankDisplay(false);
+            });
+        } finally {
+            showSpinButton();
+        }
     }
 
     // /api/foods/{foodId}/nutrition 호출 후 오른쪽 출력
