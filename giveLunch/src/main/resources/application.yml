@@ -30,6 +30,8 @@ management:
         http.server.requests: 100ms,300ms,500ms,1s,3s
 
 app:
+  rank:
+    retention: ${APP_RANK_RETENTION:24h}
   observability:
     enabled: true
     run-id-header: X-LoadTest-Run-Id
