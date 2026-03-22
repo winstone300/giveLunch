@@ -563,8 +563,9 @@
             if (!response.ok) {
                 return;
             }
-            await refreshRankList();
-            renderRankDisplay(false);
+            refreshRankList().then(() => {
+                renderRankDisplay(false);
+            });
         } finally {
             showSpinButton();
         }
