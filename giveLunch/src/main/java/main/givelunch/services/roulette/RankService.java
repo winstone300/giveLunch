@@ -26,7 +26,7 @@ public class RankService {
     private final StringRedisTemplate redisTemplate;
     private final Clock clock;
     private final long retentionSeconds;
-    private final RedisScript<Number> incrementScript;
+    private final RedisScript<Long> incrementScript;
     private final RedisScript<List> topRanksScript;
     private final RedisScript<List> rebuildScript;
 
@@ -46,7 +46,7 @@ public class RankService {
             StringRedisTemplate redisTemplate,
             Clock clock,
             RankProperties rankProperties,
-            RedisScript<Number> incrementScript,
+            RedisScript<Long> incrementScript,
             RedisScript<List> topRanksScript,
             RedisScript<List> rebuildScript) {
         this.redisTemplate = redisTemplate;
@@ -60,7 +60,7 @@ public class RankService {
     public RankEntryDto increment(String name) {
         long now = Instant.now(clock).getEpochSecond();
         long cutoff = now - retentionSeconds;
-        Number score = redisTemplate.execute(
+        Long score = redisTemplate.execute(
                 incrementScript,
                 List.of(RANK_KEY, RANK_EVENT_KEY),
                 name,
@@ -69,7 +69,7 @@ public class RankService {
                 Long.toString(cutoff)
         );
 
-        return new RankEntryDto(name, toLong(score, "increment"));
+        return new RankEntryDto(name, requireScore(score, "increment"));
     }
 
     public List<RankEntryDto> getTopRanks(int limit) {
@@ -103,10 +103,10 @@ public class RankService {
         return result;
     }
 
-    private static RedisScript<Number> createIncrementScript() {
-        DefaultRedisScript<Number> script = new DefaultRedisScript<>();
+    private static RedisScript<Long> createIncrementScript() {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
         script.setLocation(new ClassPathResource("redis/rank-increment.lua"));
-        script.setResultType(Number.class);
+        script.setResultType(Long.class);
         return script;
     }
 
@@ -125,11 +125,11 @@ public class RankService {
     }
 
 
-    private long toLong(Number value, String operation) {
+    private long requireScore(Long value, String operation) {
         if (value == null) {
             throw new IllegalStateException("Redis rank " + operation + " script returned null");
         }
-        return value.longValue();
+        return value;
     }
 
     private List<RankEntryDto> toRankEntries(List<?> rawResults) {

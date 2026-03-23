@@ -29,4 +29,4 @@ if #expiredEvents > 0 then
 end
 
 redis.call('ZADD', eventKey, nowEpochSeconds, eventMember)
-return tonumber(redis.call('ZINCRBY', rankKey, 1, foodName))
+return tonumber(redis.call('ZINCRBY', rankKey, 1, foodName))    
