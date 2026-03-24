@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
+import java.lang.reflect.Method;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,7 +34,7 @@ class RankServiceTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
-    private RedisScript<Number> incrementScript;
+    private RedisScript<Long> incrementScript;
 
     @Mock
     private RedisScript<List> topRanksScript;
@@ -144,6 +146,18 @@ class RankServiceTest {
                 eq(Long.toString(fixedTime.getEpochSecond())),
                 eq(Long.toString(cutoffEpochSeconds))
         );
+    }
+
+    @Test
+    @DisplayName("createIncrementScript() - 증가 스크립트 결과 타입은 Long")
+    void createIncrementScript_usesLongResultType() throws Exception {
+        Method method = RankService.class.getDeclaredMethod("createIncrementScript");
+        method.setAccessible(true);
+
+        Object script = method.invoke(null);
+
+        assertThat(script).isInstanceOf(DefaultRedisScript.class);
+        assertThat(((DefaultRedisScript<?>) script).getResultType()).isEqualTo(Long.class);
     }
 
     @Test
