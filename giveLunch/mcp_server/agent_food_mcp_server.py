@@ -11,7 +11,7 @@ API_KEY = os.environ.get("GIVELUNCH_AGENT_API_KEY", "")
 SERVER_NAME = "givelunch-agent-foods"
 PROTOCOL_VERSION = "2024-11-05"
 
-
+#도구 목록 정의
 TOOLS = [
     {
         "name": "search_external_foods",
@@ -58,7 +58,7 @@ TOOLS = [
     },
 ]
 
-
+#백엔드 API에 POST요청
 def post_json(path, payload):
     if not API_KEY:
         raise RuntimeError("GIVELUNCH_AGENT_API_KEY is not set")
@@ -81,7 +81,7 @@ def post_json(path, payload):
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Request failed: {exc.reason}") from exc
 
-
+#도구와 해당 API 매핑
 def call_tool(name, arguments):
     if name == "search_external_foods":
         return post_json("/api/agent/foods/search-external", arguments)
