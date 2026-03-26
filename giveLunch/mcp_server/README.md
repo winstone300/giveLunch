@@ -8,6 +8,7 @@
 - 외부 음식 데이터를 검색
 - 검색한 음식 데이터를 giveLunch에 저장
 - 음식 이름 목록으로 검색과 저장을 한 번에 수행
+- MCP 에이전트 benchmark run 결과를 파일로 저장
 
 Python MCP 서버는 중계 계층, 실제 비즈니스 처리는 Spring 애플리케이션이 담당
 
@@ -21,6 +22,9 @@ Python MCP 서버는 중계 계층, 실제 비즈니스 처리는 Spring 애플�
 - `GIVELUNCH_AGENT_API_KEY`
   - 필수 값입
   - Spring 애플리케이션의 `app.agent-auth.api-key` 값과 반드시 일치
+- `GIVELUNCH_AGENT_BENCHMARK_DIR`
+  - benchmark 산출물 저장 경로
+  - 기본값: `mcp_server/benchmarks`
 
 ## 실행 방법
 
@@ -73,6 +77,43 @@ python mcp_server/agent_food_mcp_server.py
   - `names`: 검색할 음식 이름 목록
   - `limitPerName`: 각 이름별 최대 검색 개수
 
+### `benchmark_start_run`
+
+MCP 에이전트 benchmark run 폴더를 만들고 `input.json`을 저장
+
+- 입력 예시
+
+```json
+{
+  "scenario_name": "50-food-batch",
+  "model": "gpt-5.4",
+  "prompt_version": "v1",
+  "food_names": ["비빔밥", "김치찌개"],
+  "limit": 1,
+  "cache_mode": "cold"
+}
+```
+
+### `benchmark_finish_run`
+
+활성 benchmark run의 `result.json`, `summary.json`을 저장
+
+- 입력 예시
+
+```json
+{
+  "total_elapsed_ms": 12500,
+  "input_tokens": 2100,
+  "output_tokens": 650,
+  "result": {
+    "savedCount": 2,
+    "skippedCount": 0,
+    "failedCount": 0,
+    "results": []
+  }
+}
+```
+
 ## 내부 동작 방식
 
 각 MCP 도구 호출은 아래 Spring API 엔드포인트로 전달
@@ -80,6 +121,8 @@ python mcp_server/agent_food_mcp_server.py
 - `search_external_foods` -> `POST /api/agent/foods/search-external`
 - `save_foods` -> `POST /api/agent/foods/save`
 - `import_foods_by_name` -> `POST /api/agent/foods/import`
+- `benchmark_start_run` -> MCP 서버 내부 파일 저장 처리
+- `benchmark_finish_run` -> MCP 서버 내부 파일 저장 처리
 
 요청은 JSON으로 전송되며, 인증은 아래 헤더를 사용
 
@@ -92,3 +135,5 @@ Authorization: Bearer <GIVELUNCH_AGENT_API_KEY>
 - `GIVELUNCH_AGENT_API_KEY`가 설정되지 않으면 서버는 도구 호출 시 오류를 반환합니다.
 - Spring 서버가 실행 중이 아니거나 주소가 잘못되면 HTTP 또는 연결 오류가 발생합니다.
 - MCP 응답에는 텍스트 형태의 결과와 함께 구조화된 JSON 결과가 포함됩니다.
+- benchmark 산출물은 `benchmarks/<run_id>/input.json`, `tool_calls.json`, `result.json`, `summary.json` 형식으로 저장됩니다.
+- `input_tokens`, `output_tokens`, `total_tokens`를 직접 넘기지 못하는 경우 `benchmark_finish_run`에 `input_text`, `output_text`를 전달하면 추정 토큰 수로 저장할 수 있습니다.
