@@ -2,7 +2,12 @@ package main.givelunch.config;
 
 import lombok.RequiredArgsConstructor;
 import main.givelunch.model.Role;
+import main.givelunch.properties.AgentAuthProperties;
 import main.givelunch.properties.SecurityProperties;
+import main.givelunch.security.agent.AgentAccessDeniedHandler;
+import main.givelunch.security.agent.AgentApiAuthFilter;
+import main.givelunch.security.agent.AgentAuthenticationEntryPoint;
+import main.givelunch.security.agent.FixedApiKeyAgentAuthService;
 import main.givelunch.services.login.LoginAttemptService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -11,16 +16,20 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.authentication.LockedException;
 
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, AgentAuthProperties.class})
 public class SecurityConfig {
     private final SecurityProperties securityProperties;
     private final LoginAttemptService loginAttemptService;
+    private final AgentApiAuthFilter agentApiAuthFilter;
+    private final AgentAuthenticationEntryPoint agentAuthenticationEntryPoint;
+    private final AgentAccessDeniedHandler agentAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -33,10 +42,16 @@ public class SecurityConfig {
         String[] permitUser = securityProperties.permitAllUser().toArray(new String[0]);
 
         http
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/agent/**"))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/agent/**").hasAuthority(FixedApiKeyAgentAuthService.AGENT_API_ROLE)
                         .requestMatchers(permitUser).permitAll()
                         .requestMatchers(permitAdmin).hasAuthority(Role.ADMIN.value())
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(exception -> exception
+                        .defaultAuthenticationEntryPointFor(agentAuthenticationEntryPoint, request -> request.getRequestURI().startsWith("/api/agent/"))
+                        .defaultAccessDeniedHandlerFor(agentAccessDeniedHandler, request -> request.getRequestURI().startsWith("/api/agent/"))
                 )
                 .formLogin(form -> form
                         .loginPage("/login")    // GET /login -> 내가 만든 페이지로 이동
@@ -74,6 +89,8 @@ public class SecurityConfig {
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/roulette")
                 );
+
+        http.addFilterBefore(agentApiAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

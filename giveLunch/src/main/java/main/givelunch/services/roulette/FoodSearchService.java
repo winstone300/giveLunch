@@ -44,7 +44,10 @@ public class FoodSearchService {
 
     public List<FoodAndNutritionDto> searchExternalFoods(String name, UserDetails user) {
         int fetchCount = isAdmin(user) ? properties.numOfRowsAdmin() : properties.numOfRowsUser();
+        return searchExternalFoods(name, fetchCount);
+    }
 
+    public List<FoodAndNutritionDto> searchExternalFoods(String name, int fetchCount) {
         return dataGoKrFoodClient.fetchFoodsByName(name, fetchCount);
     }
 

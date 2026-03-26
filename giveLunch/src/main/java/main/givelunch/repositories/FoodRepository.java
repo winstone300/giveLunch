@@ -16,6 +16,8 @@ public interface FoodRepository extends JpaRepository<Food, Long> {
     @Query("select f.id from Food f where f.name = :name")
     Optional<Long> findIdByName(@Param("name") String name);
 
+    Optional<Food> findByName(String name);
+
     // 검색시 음식 추천(get /api/menus/suggest)
     @Query("""
             select f from Food f

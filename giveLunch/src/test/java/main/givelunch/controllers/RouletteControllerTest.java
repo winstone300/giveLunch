@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
+import main.givelunch.security.agent.AgentAuthService;
 import main.givelunch.services.roulette.FoodSearchService;
 import main.givelunch.services.roulette.MenuService;
 import org.hamcrest.Matchers;
@@ -17,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,6 +34,12 @@ class RouletteControllerTest {
 
     @MockitoBean
     private FoodSearchService foodSearchService;
+
+    @MockitoBean
+    private AgentAuthService agentAuthService;
+
+    @MockitoBean
+    private AuthenticationEntryPoint authenticationEntryPoint;
 
     @Test
     @DisplayName("GET /api/menus/suggest: 메뉴 자동완성 결과를 반환")
