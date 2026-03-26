@@ -72,6 +72,14 @@
 
 </details>
 <br>
+<br>
+
+# Problem & Solve
+| Subject | Project |
+|:-------|:--------|
+| 문제 해결 | [prometheus에서 bucket이 생성 되지 않는 문제](portpolio/prometheus에서_bucket이_생성_되지_않는_문제.md) | 
+| 문제 해결 | [redis에서의 정합성 확보](portpolio/redis에서의_정합성_확보.md) |
+| 성능 개선 | [db 인덱싱](portpolio/성능개선.md) | 
 
 # API
 <details> 
