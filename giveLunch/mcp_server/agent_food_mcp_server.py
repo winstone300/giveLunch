@@ -7,7 +7,7 @@ import urllib.request
 
 
 BASE_URL = os.environ.get("GIVELUNCH_AGENT_BASE_URL", "http://localhost:8080").rstrip("/")
-API_KEY = os.environ.get("GIVELUNCH_AGENT_API_KEY", "")
+API_KEY = os.environ.get("GIVELUNCH_AGENT_API_KEY", "giveLunch")
 SERVER_NAME = "givelunch-agent-foods"
 PROTOCOL_VERSION = "2024-11-05"
 
@@ -151,6 +151,7 @@ def handle_request(message):
 
 
 def main():
+    # 표준 입력으로 입력 받음
     for raw_line in sys.stdin:
         line = raw_line.strip()
         if not line:
