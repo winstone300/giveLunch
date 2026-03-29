@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import agent_food_mcp_server as server
+import food_mcp_common as common
 
 
 class BenchmarkRecorderTest(unittest.TestCase):
@@ -13,7 +13,7 @@ class BenchmarkRecorderTest(unittest.TestCase):
             "a": [" 김치찌개 ", {"y": "  1  2 ", "x": " 값 "}],
         }
 
-        normalized = server.normalize_value(payload)
+        normalized = common.normalize_value(payload)
 
         self.assertEqual(
             normalized,
@@ -25,7 +25,7 @@ class BenchmarkRecorderTest(unittest.TestCase):
 
     def test_duplicate_tool_call_is_recorded(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            recorder = server.BenchmarkRecorder(Path(tmpdir))
+            recorder = common.BenchmarkRecorder(Path(tmpdir))
             recorder.start_run({
                 "scenario_name": "duplicate-check",
                 "model": "gpt-5.4",
@@ -55,9 +55,9 @@ class BenchmarkRecorderTest(unittest.TestCase):
             self.assertFalse(tool_calls[0]["is_duplicate"])
             self.assertTrue(tool_calls[1]["is_duplicate"])
 
-    def test_finish_run_writes_summary_files(self):
+    def test_finish_run_writes_estimated_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            recorder = server.BenchmarkRecorder(Path(tmpdir))
+            recorder = common.BenchmarkRecorder(Path(tmpdir))
             start = recorder.start_run({
                 "run_id": "run-fixed",
                 "scenario_name": "batch-10",
@@ -116,9 +116,30 @@ class BenchmarkRecorderTest(unittest.TestCase):
             self.assertEqual(summary["token_mode"], "estimated")
             self.assertIsNotNone(summary["total_tokens"])
 
+    def test_finish_run_writes_exact_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            recorder = common.BenchmarkRecorder(Path(tmpdir))
+            recorder.start_run({
+                "scenario_name": "exact",
+                "model": "gpt-5.4",
+                "prompt_version": "v1",
+                "cache_mode": "cold",
+            })
+
+            finished = recorder.finish_run({
+                "total_elapsed_ms": 300,
+                "input_tokens": 120,
+                "output_tokens": 30,
+                "result": {"savedCount": 0, "skippedCount": 1, "failedCount": 0, "results": []},
+            })
+
+            summary = finished["summary"]
+            self.assertEqual(summary["token_mode"], "exact")
+            self.assertEqual(summary["total_tokens"], 150)
+
     def test_rates_are_null_when_saved_count_is_zero(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            recorder = server.BenchmarkRecorder(Path(tmpdir))
+            recorder = common.BenchmarkRecorder(Path(tmpdir))
             recorder.start_run({
                 "scenario_name": "empty-result",
                 "model": "gpt-5.4",
