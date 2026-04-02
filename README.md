@@ -80,6 +80,8 @@
 | 문제 해결 | [prometheus에서 bucket이 생성 되지 않는 문제](portpolio/prometheus에서%20bucket이%20생성%20되지%20않는%20문제.md) | 
 | 문제 해결 | [redis에서의 정합성 확보](portpolio/redis에서의%20정합성%20확보.md) |
 | 성능 개선 | [db 인덱싱](portpolio/성능개선.md) | 
+| 자동화 | [MCP 서버 구현](portpolio/MCP서버구현.md) |
+| 성능 측정 | [에이전트 요청 성능 측정](portpolio/MCP성능측정.md) | 
 
 # API
 <details> 
