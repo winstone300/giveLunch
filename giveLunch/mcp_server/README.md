@@ -8,9 +8,6 @@
 - `benchmark_food_mcp_server.py`
   - 벤치마크 실행 전용 프록시 서버
   - 동일한 음식 도구와 benchmark 기록 도구를 함께 노출
-- `agent_food_mcp_server.py`
-  - 기존 진입점 호환용 래퍼
-  - 현재는 `benchmark_food_mcp_server.py`를 실행
 - `benchmark_food_mcp_runner.py`
   - OpenAI `Responses API` 응답의 `usage`를 누적해 benchmark 종료 시 exact 토큰 값을 기록하는 러너
 
@@ -43,12 +40,6 @@ Benchmark Food MCP:
 
 ```bash
 python mcp_server/benchmark_food_mcp_server.py
-```
-
-기존 호환 진입점:
-
-```bash
-python mcp_server/agent_food_mcp_server.py
 ```
 
 ## 제공 도구
