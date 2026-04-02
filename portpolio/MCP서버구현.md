@@ -6,10 +6,10 @@
 
 ---
 
-- 음식 영양 정보 조회 시 DB에 데이터가 없으면 외부 API를 호출해 정보를 조회하는 구조였습니다.
-- DB에 저장된 음식 정보가 많을수록 외부 API 호출 빈도를 줄이고 평균 응답 속도를 안정적으로 유지할 수 있었습니다.
-- 기존에는 관리자가 관리자 페이지에서 직접 음식을 검색하고 저장해야 했기 때문에, 데이터 적재가 수작업에 의존했고 반복 업무 부담이 컸습니다.
-- 수동 저장 방식은 대량 적재가 어렵고, 운영자 개입 없이는 DB 확장이 느리다는 한계가 있었습니다.
+- 음식 영양 정보 조회 시 DB에 데이터가 없으면 외부 API를 호출해 정보를 조회하는 구조
+- DB에 저장된 음식 정보가 많을수록 외부 API 호출 빈도를 줄이고 평균 응답 속도를 안정적으로 유지
+- 기존에는 관리자가 관리자 페이지에서 직접 음식을 검색하고 저장해야 했기 때문에, 데이터 적재가 수작업에 의존했고 반복 업무 부담이 큼
+- 수동 저장 방식은 대량 적재가 어렵고, 운영자 개입 없이는 DB 확장이 느리다는 한계 존재
 
 ## Approach
 
@@ -41,7 +41,8 @@
 | 음식 정보 적재 방식 | 관리자 페이지에서 수동 검색 후 단건 저장 | MCP 서버를 통한 검색/저장 자동화 | 반복 업무 제거 |
 | 대량 데이터 적재 | 불가 | 이름 목록 기반 일괄 import 가능 | 적재 효율 향상 |
 
-**Before** (관리자가 음식 검색 후 단건 저장)                             **After** (Agent가 목록 생성 후 자동 저장)
+&nbsp;&nbsp;&nbsp;&nbsp;**Before** (관리자가 음식 검색 후 단건 저장)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+**After** (Agent가 목록 생성 후 자동 저장)
 
 <img width="1102" height="524" alt="image" src="https://github.com/user-attachments/assets/ee92a42b-6d20-4cc6-96be-1814f384bb3e" />
 
