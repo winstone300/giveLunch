@@ -1,0 +1,4 @@
+interface:
+  display_name: "Benchmark Food MCP"
+  short_description: "Run benchmarked food MCP workflows"
+  default_prompt: "Use $benchmark-food-mcp to measure a food save or import task through the benchmark MCP workflow."

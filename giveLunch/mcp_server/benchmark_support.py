@@ -3,22 +3,65 @@ import json
 import math
 import os
 import re
-import sys
-import time
-import urllib.error
-import urllib.request
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
+from food_mcp_common import FOOD_TOOL_NAMES
 
-BASE_URL = os.environ.get("GIVELUNCH_AGENT_BASE_URL", "http://localhost:8080").rstrip("/")
-API_KEY = os.environ.get("GIVELUNCH_AGENT_API_KEY", "giveLunch")
-SERVER_NAME = "givelunch-agent-foods"
-PROTOCOL_VERSION = "2024-11-05"
+
 SCRIPT_DIR = Path(__file__).resolve().parent
-BENCHMARK_DIR = Path(os.environ.get("GIVELUNCH_AGENT_BENCHMARK_DIR", SCRIPT_DIR / "benchmarks"))
-APP_TOOL_NAMES = {"search_external_foods", "save_foods", "import_foods_by_name"}
+DEFAULT_BENCHMARK_DIR = SCRIPT_DIR / "benchmarks"
+UTC = timezone.utc
+
+BENCHMARK_TOOLS = [
+    {
+        "name": "benchmark_start_run",
+        "description": "Create a benchmark run folder and persist input.json for MCP agent measurements.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {"type": "string"},
+                "scenario_name": {"type": "string"},
+                "model": {"type": "string"},
+                "prompt_version": {"type": "string"},
+                "food_names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "limit": {"type": "integer", "minimum": 1},
+                "cache_mode": {"type": "string"},
+            },
+            "required": ["scenario_name", "model", "prompt_version", "cache_mode"],
+        },
+    },
+    {
+        "name": "benchmark_finish_run",
+        "description": "Persist result.json and summary.json for the active benchmark run.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "run_id": {"type": "string"},
+                "total_elapsed_ms": {"type": "number", "minimum": 0},
+                "input_tokens": {"type": "integer", "minimum": 0},
+                "output_tokens": {"type": "integer", "minimum": 0},
+                "total_tokens": {"type": "integer", "minimum": 0},
+                "token_mode": {"type": "string"},
+                "input_text": {"type": "string"},
+                "output_text": {"type": "string"},
+                "savedCount": {"type": "integer", "minimum": 0},
+                "skippedCount": {"type": "integer", "minimum": 0},
+                "failedCount": {"type": "integer", "minimum": 0},
+                "result": {"type": "object"},
+            },
+            "required": ["total_elapsed_ms"],
+        },
+    },
+]
+
+
+def get_benchmark_dir():
+    return Path(os.environ.get("GIVELUNCH_AGENT_BENCHMARK_DIR", DEFAULT_BENCHMARK_DIR))
 
 
 def utc_now():
@@ -36,8 +79,7 @@ def canonical_json(payload):
 
 def normalize_value(value):
     if isinstance(value, str):
-        collapsed = re.sub(r"\s+", " ", value).strip()
-        return collapsed
+        return re.sub(r"\s+", " ", value).strip()
     if isinstance(value, list):
         return [normalize_value(item) for item in value]
     if isinstance(value, dict):
@@ -89,7 +131,7 @@ class BenchmarkRun:
     def __init__(self, base_dir, arguments):
         run_id = arguments.get("run_id") or self._create_run_id()
         self.run_id = str(run_id)
-        self.run_dir = base_dir / self.run_id
+        self.run_dir = Path(base_dir) / self.run_id
         if self.run_dir.exists():
             raise RuntimeError(f"Benchmark run already exists: {self.run_id}")
 
@@ -209,12 +251,11 @@ class BenchmarkRun:
         if input_tokens is not None or output_tokens is not None or total_tokens is not None:
             if input_tokens is not None and output_tokens is not None and total_tokens is None:
                 total_tokens = input_tokens + output_tokens
-            token_mode = token_mode or "exact"
             return {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "total_tokens": total_tokens,
-                "token_mode": token_mode,
+                "token_mode": token_mode or "exact",
             }
 
         input_text = arguments.get("input_text")
@@ -222,11 +263,10 @@ class BenchmarkRun:
         if input_text is not None or output_text is not None:
             input_tokens = estimate_tokens_from_text(input_text or "")
             output_tokens = estimate_tokens_from_text(output_text or "")
-            total_tokens = input_tokens + output_tokens
             return {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
-                "total_tokens": total_tokens,
+                "total_tokens": input_tokens + output_tokens,
                 "token_mode": token_mode or "estimated",
             }
 
@@ -239,9 +279,10 @@ class BenchmarkRun:
 
 
 class BenchmarkRecorder:
-    def __init__(self, base_dir):
+    def __init__(self, base_dir, tracked_tool_names=None):
         self.base_dir = Path(base_dir)
         self.active_run = None
+        self.tracked_tool_names = set(tracked_tool_names or FOOD_TOOL_NAMES)
 
     def start_run(self, arguments):
         if self.active_run is not None:
@@ -267,226 +308,6 @@ class BenchmarkRecorder:
         return finished
 
     def record_tool_call(self, tool_name, arguments, result, started_at, finished_at, tool_elapsed_ms):
-        if self.active_run is None or tool_name not in APP_TOOL_NAMES:
+        if self.active_run is None or tool_name not in self.tracked_tool_names:
             return
         self.active_run.record_tool_call(tool_name, arguments, result, started_at, finished_at, tool_elapsed_ms)
-
-
-BENCHMARK_RECORDER = BenchmarkRecorder(BENCHMARK_DIR)
-
-# 도구 목록 정의
-TOOLS = [
-    {
-        "name": "search_external_foods",
-        "description": "Search external food data from giveLunch agent API.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "limit": {"type": "integer", "minimum": 1},
-            },
-            "required": ["name"],
-        },
-    },
-    {
-        "name": "save_foods",
-        "description": "Save FoodAndNutritionDto items into giveLunch through the agent API.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {"type": "object"},
-                    "minItems": 1,
-                }
-            },
-            "required": ["items"],
-        },
-    },
-    {
-        "name": "import_foods_by_name",
-        "description": "Search and save foods by names through the giveLunch agent API.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "names": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 1,
-                },
-                "limitPerName": {"type": "integer", "minimum": 1},
-            },
-            "required": ["names"],
-        },
-    },
-    {
-        "name": "benchmark_start_run",
-        "description": "Create a benchmark run folder and persist input.json for MCP agent measurements.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "run_id": {"type": "string"},
-                "scenario_name": {"type": "string"},
-                "model": {"type": "string"},
-                "prompt_version": {"type": "string"},
-                "food_names": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                },
-                "limit": {"type": "integer", "minimum": 1},
-                "cache_mode": {"type": "string"},
-            },
-            "required": ["scenario_name", "model", "prompt_version", "cache_mode"],
-        },
-    },
-    {
-        "name": "benchmark_finish_run",
-        "description": "Persist result.json and summary.json for the active benchmark run.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "run_id": {"type": "string"},
-                "total_elapsed_ms": {"type": "number", "minimum": 0},
-                "input_tokens": {"type": "integer", "minimum": 0},
-                "output_tokens": {"type": "integer", "minimum": 0},
-                "total_tokens": {"type": "integer", "minimum": 0},
-                "token_mode": {"type": "string"},
-                "input_text": {"type": "string"},
-                "output_text": {"type": "string"},
-                "savedCount": {"type": "integer", "minimum": 0},
-                "skippedCount": {"type": "integer", "minimum": 0},
-                "failedCount": {"type": "integer", "minimum": 0},
-                "result": {"type": "object"},
-            },
-            "required": ["total_elapsed_ms"],
-        },
-    },
-]
-
-
-# 백엔드 API에 POST 요청
-def post_json(path, payload):
-    if not API_KEY:
-        raise RuntimeError("GIVELUNCH_AGENT_API_KEY is not set")
-    request = urllib.request.Request(
-        BASE_URL + path,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request) as response:
-            charset = response.headers.get_content_charset() or "utf-8"
-            return json.loads(response.read().decode(charset))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {exc.code}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Request failed: {exc.reason}") from exc
-
-
-# 도구와 해당 API 매핑
-def call_tool(name, arguments):
-    if name == "benchmark_start_run":
-        return BENCHMARK_RECORDER.start_run(arguments)
-    if name == "benchmark_finish_run":
-        return BENCHMARK_RECORDER.finish_run(arguments)
-
-    started_at = utc_now()
-    start_perf = time.perf_counter()
-    if name == "search_external_foods":
-        result = post_json("/api/agent/foods/search-external", arguments)
-    elif name == "save_foods":
-        result = post_json("/api/agent/foods/save", arguments)
-    elif name == "import_foods_by_name":
-        result = post_json("/api/agent/foods/import", arguments)
-    else:
-        raise RuntimeError(f"Unknown tool: {name}")
-
-    finished_at = utc_now()
-    tool_elapsed_ms = (time.perf_counter() - start_perf) * 1000
-    BENCHMARK_RECORDER.record_tool_call(name, arguments, result, started_at, finished_at, tool_elapsed_ms)
-    return result
-
-
-def success_response(message_id, result):
-    return {
-        "jsonrpc": "2.0",
-        "id": message_id,
-        "result": result,
-    }
-
-
-def error_response(message_id, code, message):
-    return {
-        "jsonrpc": "2.0",
-        "id": message_id,
-        "error": {
-            "code": code,
-            "message": message,
-        },
-    }
-
-
-def handle_request(message):
-    method = message.get("method")
-    message_id = message.get("id")
-    params = message.get("params", {})
-
-    if method == "initialize":
-        return success_response(message_id, {
-            "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": SERVER_NAME, "version": "0.2.0"},
-        })
-
-    if method == "notifications/initialized":
-        return None
-
-    if method == "tools/list":
-        return success_response(message_id, {"tools": TOOLS})
-
-    if method == "tools/call":
-        name = params.get("name")
-        arguments = params.get("arguments", {})
-        try:
-            result = call_tool(name, arguments)
-            return success_response(message_id, {
-                "content": [
-                    {"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2)}
-                ],
-                "structuredContent": result,
-                "isError": False,
-            })
-        except Exception as exc:
-            return success_response(message_id, {
-                "content": [{"type": "text", "text": str(exc)}],
-                "isError": True,
-            })
-
-    return error_response(message_id, -32601, f"Method not found: {method}")
-
-
-def main():
-    # 표준 입력으로 입력 받음
-    for raw_line in sys.stdin:
-        line = raw_line.strip()
-        if not line:
-            continue
-        try:
-            message = json.loads(line)
-        except json.JSONDecodeError as exc:
-            response = error_response(None, -32700, f"Invalid JSON: {exc}")
-        else:
-            response = handle_request(message)
-
-        if response is not None:
-            sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
-            sys.stdout.flush()
-
-
-if __name__ == "__main__":
-    main()

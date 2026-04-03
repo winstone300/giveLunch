@@ -1,87 +1,77 @@
-# giveLunch Agent MCP Server
+# giveLunch MCP Servers
 
-표준 입출력(`stdio`) 기반으로 동작하는 MCP 서버
+표준 입출력(`stdio`) 기반으로 동작하는 MCP 서버 모음입니다.
 
-## TOOL
+- `food_mcp_server.py`
+  - 일반 운영/수동 사용용 서버
+  - 음식 검색/저장 도구만 노출
+- `benchmark_food_mcp_server.py`
+  - 벤치마크 실행 전용 프록시 서버
+  - 동일한 음식 도구와 benchmark 기록 도구를 함께 노출
+- `benchmark_food_mcp_runner.py`
+  - OpenAI `Responses API` 응답의 `usage`를 누적해 benchmark 종료 시 exact 토큰 값을 기록하는 러너
+- `food_mcp_common.py`
+  - 음식 도구 정의와 Spring API 실행기
+- `benchmark_support.py`
+  - benchmark run 기록, summary/result 생성, 토큰 추정 유틸
+- `mcp_protocol.py`
+  - MCP 프로토콜 응답 처리와 stdio 서버 골격
 
-
-- 외부 음식 데이터를 검색
-- 검색한 음식 데이터를 giveLunch에 저장
-- 음식 이름 목록으로 검색과 저장을 한 번에 수행
-- MCP 에이전트 benchmark run 결과를 파일로 저장
-
-Python MCP 서버는 중계 계층, 실제 비즈니스 처리는 Spring 애플리케이션이 담당
+Python MCP 서버는 중계 계층이며, 실제 비즈니스 처리는 Spring 애플리케이션이 담당합니다.
 
 ## 환경 변수
 
-서버 실행 전 아래 환경 변수를 설정
-
 - `GIVELUNCH_AGENT_BASE_URL`
-  - Spring 애플리케이션의 기본 주소
+  - Spring 애플리케이션 기본 주소
   - 기본값: `http://localhost:8080`
 - `GIVELUNCH_AGENT_API_KEY`
-  - 필수 값입
-  - Spring 애플리케이션의 `app.agent-auth.api-key` 값과 반드시 일치
+  - Spring 애플리케이션의 `app.agent-auth.api-key` 와 동일해야 함
 - `GIVELUNCH_AGENT_BENCHMARK_DIR`
   - benchmark 산출물 저장 경로
   - 기본값: `mcp_server/benchmarks`
+- `OPENAI_API_KEY`
+  - `benchmark_food_mcp_runner.py` 실행 시 필요
+- `OPENAI_BASE_URL`
+  - 필요 시 OpenAI 호환 엔드포인트로 변경 가능
 
 ## 실행 방법
 
-프로젝트 루트 또는 해당 스크립트가 보이는 위치에서 아래 명령으로 실행
+일반 Food MCP:
 
 ```bash
-python mcp_server/agent_food_mcp_server.py
+python mcp_server/food_mcp_server.py
+```
+
+Benchmark Food MCP:
+
+```bash
+python mcp_server/benchmark_food_mcp_server.py
 ```
 
 ## 제공 도구
 
-### `search_external_foods`
+### Food MCP
 
-외부 음식 데이터를 검색
+- `search_external_foods`
+- `save_foods`
+- `import_foods_by_name`
 
-- 입력 예시
+각 도구는 아래 Spring API 엔드포인트로 전달됩니다.
 
-```json
-{ "name": "비빔밥", "limit": 5 }
-```
+- `search_external_foods` -> `POST /api/agent/foods/search-external`
+- `save_foods` -> `POST /api/agent/foods/save`
+- `import_foods_by_name` -> `POST /api/agent/foods/import`
 
-- 주요 필드
-  - `name`: 검색할 음식 이름
-  - `limit`: 최대 검색 개수, 생략 가능
+### Benchmark Food MCP
 
-### `save_foods`
+Food MCP의 3개 도구에 더해 아래 benchmark 도구를 제공합니다.
 
-검색된 음식 데이터(`FoodAndNutritionDto` 형태)를 giveLunch에 저장
+- `benchmark_start_run`
+  - benchmark run 폴더를 만들고 `input.json` 저장
+- `benchmark_finish_run`
+  - `result.json`, `summary.json` 저장
 
-- 입력 예시
-
-```json
-{ "items": [FoodAndNutritionDto, "..."] }
-```
-
-- 주요 필드
-  - `items`: 저장할 음식 데이터 배열
-
-### `import_foods_by_name`
-
-음식 이름 목록을 기준으로 외부 검색과 저장을 한 번에 수행
-
-- 입력 예시
-
-```json
-{ "names": ["비빔밥", "우동"], "limitPerName": 3 }
-```
-
-- 주요 필드
-  - `names`: 검색할 음식 이름 목록
-  - `limitPerName`: 각 이름별 최대 검색 개수
-
-### `benchmark_start_run`
-
-MCP 에이전트 benchmark run 폴더를 만들고 `input.json`을 저장
-
-- 입력 예시
+`benchmark_start_run` 입력 예시:
 
 ```json
 {
@@ -94,17 +84,14 @@ MCP 에이전트 benchmark run 폴더를 만들고 `input.json`을 저장
 }
 ```
 
-### `benchmark_finish_run`
-
-활성 benchmark run의 `result.json`, `summary.json`을 저장
-
-- 입력 예시
+`benchmark_finish_run` 입력 예시:
 
 ```json
 {
   "total_elapsed_ms": 12500,
   "input_tokens": 2100,
   "output_tokens": 650,
+  "token_mode": "exact",
   "result": {
     "savedCount": 2,
     "skippedCount": 0,
@@ -114,26 +101,30 @@ MCP 에이전트 benchmark run 폴더를 만들고 `input.json`을 저장
 }
 ```
 
-## 내부 동작 방식
+## Benchmark 기록 방식
 
-각 MCP 도구 호출은 아래 Spring API 엔드포인트로 전달
+Benchmark Food MCP는 활성 run이 있을 때만 아래 정보를 자동 기록합니다.
 
-- `search_external_foods` -> `POST /api/agent/foods/search-external`
-- `save_foods` -> `POST /api/agent/foods/save`
-- `import_foods_by_name` -> `POST /api/agent/foods/import`
-- `benchmark_start_run` -> MCP 서버 내부 파일 저장 처리
-- `benchmark_finish_run` -> MCP 서버 내부 파일 저장 처리
+- tool 시작/종료 시각
+- tool elapsed time
+- 요청/응답 바이트 수
+- 정규화 인자 기준 중복 호출 여부
 
-요청은 JSON으로 전송되며, 인증은 아래 헤더를 사용
+산출물은 `benchmarks/<run_id>/input.json`, `tool_calls.json`, `result.json`, `summary.json` 형식으로 저장됩니다.
 
-```http
-Authorization: Bearer <GIVELUNCH_AGENT_API_KEY>
-```
+## Exact Token 집계
 
-## 참고 사항
+`benchmark_food_mcp_runner.py`는 OpenAI `Responses API` 호출의 `usage`를 누적해 `benchmark_finish_run`에 아래 필드를 전달합니다.
 
-- `GIVELUNCH_AGENT_API_KEY`가 설정되지 않으면 서버는 도구 호출 시 오류를 반환합니다.
-- Spring 서버가 실행 중이 아니거나 주소가 잘못되면 HTTP 또는 연결 오류가 발생합니다.
-- MCP 응답에는 텍스트 형태의 결과와 함께 구조화된 JSON 결과가 포함됩니다.
-- benchmark 산출물은 `benchmarks/<run_id>/input.json`, `tool_calls.json`, `result.json`, `summary.json` 형식으로 저장됩니다.
-- `input_tokens`, `output_tokens`, `total_tokens`를 직접 넘기지 못하는 경우 `benchmark_finish_run`에 `input_text`, `output_text`를 전달하면 추정 토큰 수로 저장할 수 있습니다.
+- `input_tokens`
+- `output_tokens`
+- `total_tokens`
+- `token_mode = "exact"`
+
+`usage`를 받을 수 없는 경우에는 아래 fallback을 사용합니다.
+
+- `input_text`
+- `output_text`
+- `token_mode = "estimated"`
+
+토큰 관련 정보가 전혀 없으면 `token_mode = "unavailable"`로 저장됩니다.
