@@ -196,7 +196,9 @@ class BenchmarkRun:
             "total_elapsed_ms": round(total_elapsed_ms, 3),
             "tool_call_count": tool_call_count,
             "duplicate_tool_calls": duplicate_tool_calls,
+            #툴 들 실행시간
             "tool_elapsed_ms_sum": tool_elapsed_ms_sum,
+            #전체 실행시간 - 툴 실행시간
             "agent_overhead_ms": round(max(total_elapsed_ms - tool_elapsed_ms_sum, 0), 3),
             "input_tokens": token_metrics["input_tokens"],
             "output_tokens": token_metrics["output_tokens"],

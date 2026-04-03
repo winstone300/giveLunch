@@ -55,16 +55,21 @@ python mcp_server/benchmark_food_mcp_server.py
 - `search_external_foods`
 - `save_foods`
 - `import_foods_by_name`
+- `bulk_import_foods_by_name`
 
 각 도구는 아래 Spring API 엔드포인트로 전달됩니다.
 
 - `search_external_foods` -> `POST /api/agent/foods/search-external`
 - `save_foods` -> `POST /api/agent/foods/save`
 - `import_foods_by_name` -> `POST /api/agent/foods/import`
+- `bulk_import_foods_by_name` -> `POST /api/agent/foods/bulk-import`
+
+대량 이름 적재가 목적이라면 `bulk_import_foods_by_name` 사용을 권장합니다.
+이 도구는 이름 목록을 한 번에 보내고, Spring 쪽에서 외부 조회 fan-out 후 기존 저장 로직으로 모아서 적재합니다.
 
 ### Benchmark Food MCP
 
-Food MCP의 3개 도구에 더해 아래 benchmark 도구를 제공합니다.
+Food MCP의 4개 도구에 더해 아래 benchmark 도구를 제공합니다.
 
 - `benchmark_start_run`
   - benchmark run 폴더를 만들고 `input.json` 저장

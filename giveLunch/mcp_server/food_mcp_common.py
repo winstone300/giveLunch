@@ -8,11 +8,12 @@ import urllib.request
 from mcp_protocol import MCPServerApp
 
 
-FOOD_TOOL_NAMES = {"search_external_foods", "save_foods", "import_foods_by_name"}
+FOOD_TOOL_NAMES = {"search_external_foods", "save_foods", "import_foods_by_name", "bulk_import_foods_by_name"}
 FOOD_TOOL_ENDPOINTS = {
     "search_external_foods": "/api/agent/foods/search-external",
     "save_foods": "/api/agent/foods/save",
     "import_foods_by_name": "/api/agent/foods/import",
+    "bulk_import_foods_by_name": "/api/agent/foods/bulk-import",
 }
 FOOD_TOOLS = [
     {
@@ -45,6 +46,22 @@ FOOD_TOOLS = [
     {
         "name": "import_foods_by_name",
         "description": "Search and save foods by names through the agent API.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "names": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                },
+                "limitPerName": {"type": "integer", "minimum": 1},
+            },
+            "required": ["names"],
+        },
+    },
+    {
+        "name": "bulk_import_foods_by_name",
+        "description": "Bulk import multiple food names through the agent API in a single tool call.",
         "inputSchema": {
             "type": "object",
             "properties": {
