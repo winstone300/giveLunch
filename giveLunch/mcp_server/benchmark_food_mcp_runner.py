@@ -10,8 +10,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from food_mcp_common import FOOD_TOOLS, estimate_tokens_from_text
+from benchmark_support import estimate_tokens_from_text
+from food_mcp_common import FOOD_TOOLS
 
+#OpenAI Responses API를 끼워서 benchmark를 실행
 
 class UsageAccumulator:
     def __init__(self):
@@ -20,6 +22,7 @@ class UsageAccumulator:
         self.total_tokens = 0
         self._has_usage = False
 
+    #OpenAI 응답의 usage 정보를 누적
     def add(self, usage):
         if not isinstance(usage, dict):
             return
@@ -61,7 +64,7 @@ def convert_tools_to_openai_functions(tools):
         for tool in tools
     ]
 
-
+#OpenAI 응답에서 최종 텍스트만 추출
 def extract_output_text(response):
     if not isinstance(response, dict):
         return ""
@@ -114,6 +117,7 @@ class OpenAIResponsesClient:
         self.base_url = (base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
         self.timeout_seconds = timeout_seconds
 
+    #OpenAI Responses API 호출
     def create_response(self, payload):
         if not self.api_key:
             raise RuntimeError("OPENAI_API_KEY is not set")
@@ -143,6 +147,7 @@ class BenchmarkMcpClient:
         self.process = None
         self._next_id = 1
 
+    #MCP 서버 start(with 문 진입 시 자동 실행)
     def __enter__(self):
         self.start()
         return self
@@ -151,6 +156,7 @@ class BenchmarkMcpClient:
         self.close()
         return False
 
+    #MCP 서버 프로세스 실행 (subprocess)
     def start(self):
         if self.process is not None:
             return
@@ -166,6 +172,7 @@ class BenchmarkMcpClient:
         self.request("initialize", {})
         self.notify("notifications/initialized", {})
 
+    #MCP 서버 프로세스 종료 처리
     def close(self):
         if self.process is None:
             return

@@ -10,6 +10,12 @@
   - 동일한 음식 도구와 benchmark 기록 도구를 함께 노출
 - `benchmark_food_mcp_runner.py`
   - OpenAI `Responses API` 응답의 `usage`를 누적해 benchmark 종료 시 exact 토큰 값을 기록하는 러너
+- `food_mcp_common.py`
+  - 음식 도구 정의와 Spring API 실행기
+- `benchmark_support.py`
+  - benchmark run 기록, summary/result 생성, 토큰 추정 유틸
+- `mcp_protocol.py`
+  - MCP 프로토콜 응답 처리와 stdio 서버 골격
 
 Python MCP 서버는 중계 계층이며, 실제 비즈니스 처리는 Spring 애플리케이션이 담당합니다.
 

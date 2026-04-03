@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import food_mcp_common as common
+import benchmark_support as common
 
 
 class BenchmarkRecorderTest(unittest.TestCase):

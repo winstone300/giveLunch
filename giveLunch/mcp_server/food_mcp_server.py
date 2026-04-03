@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-from food_mcp_common import FOOD_TOOLS, FoodToolExecutor, MCPServerApp
+from food_mcp_common import FOOD_TOOLS, FoodToolExecutor
+from mcp_protocol import MCPServerApp
 
 
 SERVER_NAME = "givelunch-foods"

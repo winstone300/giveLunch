@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
-from food_mcp_common import (
-    BENCHMARK_TOOLS,
-    FOOD_TOOLS,
-    BenchmarkRecorder,
-    FoodToolExecutor,
-    MCPServerApp,
-    get_benchmark_dir,
-)
+from benchmark_support import BENCHMARK_TOOLS, BenchmarkRecorder, get_benchmark_dir
+from food_mcp_common import FOOD_TOOLS, FoodToolExecutor
+from mcp_protocol import MCPServerApp
 
 
 SERVER_NAME = "givelunch-benchmark-foods"
