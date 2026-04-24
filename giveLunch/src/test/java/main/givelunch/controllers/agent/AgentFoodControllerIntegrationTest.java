@@ -141,6 +141,38 @@ class AgentFoodControllerIntegrationTest {
         assertThat(foodRepository.findByName("우동")).isPresent();
     }
 
+    @Test
+    @DisplayName("POST /api/agent/foods/bulk-import: 여러 이름을 한 번에 적재하고 기본 limit 1을 사용")
+    void bulkImportFoods_searchesAndPersistsFoodsInOneRequest() throws Exception {
+        foodRepository.save(Food.from(sampleFood("비빔밥", 510)));
+        when(dataGoKrFoodClient.fetchFoodsByName(eq("된장찌개"), eq(1)))
+                .thenReturn(List.of(sampleFood("된장찌개", 280)));
+        when(dataGoKrFoodClient.fetchFoodsByName(eq("비빔밥"), eq(1)))
+                .thenReturn(List.of(sampleFood("비빔밥", 510)));
+        when(dataGoKrFoodClient.fetchFoodsByName(eq("김치찌개"), eq(1)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(post("/api/agent/foods/bulk-import")
+                        .header(AUTHORIZATION, API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"names":["된장찌개"," ","비빔밥","김치찌개"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savedCount").value(1))
+                .andExpect(jsonPath("$.skippedCount").value(1))
+                .andExpect(jsonPath("$.failedCount").value(2))
+                .andExpect(jsonPath("$.results[0].name").value("된장찌개"))
+                .andExpect(jsonPath("$.results[0].status").value("SAVED"))
+                .andExpect(jsonPath("$.results[1].status").value("FAILED"))
+                .andExpect(jsonPath("$.results[2].name").value("비빔밥"))
+                .andExpect(jsonPath("$.results[2].status").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[3].name").value("김치찌개"))
+                .andExpect(jsonPath("$.results[3].status").value("FAILED"));
+
+        assertThat(foodRepository.findByName("된장찌개")).isPresent();
+    }
+
     private FoodAndNutritionDto sampleFood(String name, int calories) {
         return FoodAndNutritionDto.of(
                 null,

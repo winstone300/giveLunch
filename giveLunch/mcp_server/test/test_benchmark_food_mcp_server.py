@@ -12,7 +12,7 @@ class StubApiClient:
 
     def post_json(self, path, payload):
         self.calls.append((path, payload))
-        if path.endswith("/save"):
+        if path.endswith("/save") or path.endswith("/bulk-import"):
             return {"savedCount": 1, "skippedCount": 0, "failedCount": 0, "results": payload.get("items", [])}
         return {"results": [{"name": payload.get("name", "비빔밥")}]}
 
@@ -30,6 +30,7 @@ class BenchmarkFoodMcpServerTest(unittest.TestCase):
                 "search_external_foods",
                 "save_foods",
                 "import_foods_by_name",
+                "bulk_import_foods_by_name",
                 "benchmark_start_run",
                 "benchmark_finish_run",
             ],
@@ -62,23 +63,14 @@ class BenchmarkFoodMcpServerTest(unittest.TestCase):
                 "id": 2,
                 "method": "tools/call",
                 "params": {
-                    "name": "search_external_foods",
-                    "arguments": {"name": "비빔밥", "limit": 1},
-                },
-            })
-            app.handle_request({
-                "jsonrpc": "2.0",
-                "id": 3,
-                "method": "tools/call",
-                "params": {
-                    "name": "save_foods",
-                    "arguments": {"items": [{"name": "비빔밥"}]},
+                    "name": "bulk_import_foods_by_name",
+                    "arguments": {"names": ["비빔밥", "김치찌개"], "limitPerName": 1},
                 },
             })
 
             finish_response = app.handle_request({
                 "jsonrpc": "2.0",
-                "id": 4,
+                "id": 3,
                 "method": "tools/call",
                 "params": {
                     "name": "benchmark_finish_run",
@@ -97,7 +89,8 @@ class BenchmarkFoodMcpServerTest(unittest.TestCase):
             tool_calls = json.loads((run_dir / "tool_calls.json").read_text(encoding="utf-8"))
             summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(len(tool_calls), 2)
+            self.assertEqual(len(tool_calls), 1)
+            self.assertEqual(tool_calls[0]["tool_name"], "bulk_import_foods_by_name")
             self.assertEqual(summary["token_mode"], "exact")
             self.assertEqual(summary["total_tokens"], 18)
             self.assertEqual(summary["savedCount"], 1)

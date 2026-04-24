@@ -6,11 +6,13 @@ import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.agent.AgentBulkFoodImportRequest;
 import main.givelunch.dto.agent.AgentExternalFoodSearchRequest;
 import main.givelunch.dto.agent.AgentFoodImportRequest;
 import main.givelunch.dto.agent.AgentFoodImportResponse;
 import main.givelunch.dto.agent.AgentFoodSaveRequest;
 import main.givelunch.properties.DataGoKrProperties;
+import main.givelunch.services.agent.AgentFoodBulkImportService;
 import main.givelunch.services.agent.AgentFoodImportService;
 import main.givelunch.services.roulette.FoodSearchService;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AgentFoodController {
     private final FoodSearchService foodSearchService;
     private final AgentFoodImportService agentFoodImportService;
+    private final AgentFoodBulkImportService agentFoodBulkImportService;
     private final DataGoKrProperties dataGoKrProperties;
 
     @Operation(
@@ -43,8 +46,8 @@ public class AgentFoodController {
 
     @Operation(
             summary = "에이전트 음식 저장",
-            description = "MCP의 save_foods 도구가 사용하는 엔드포인트입니다. "
-                    + "전달받은 음식/영양정보를 저장하고 결과별 상태와 집계 카운트를 반환합니다."
+            description = "MCP의 save_foods 도구가 사용하는 엔드포인트"
+                    + "전달받은 음식/영양정보를 저장하고 결과별 상태와 집계 카운트를 반환"
     )
     @PostMapping("/save")
     public AgentFoodImportResponse saveFoods(@Valid @RequestBody AgentFoodSaveRequest request) {
@@ -53,11 +56,22 @@ public class AgentFoodController {
 
     @Operation(
             summary = "에이전트 음식 import",
-            description = "MCP의 import_foods_by_name 도구가 사용하는 엔드포인트입니다. "
-                    + "names의 각 항목에 대해 외부 검색 후 DB에 저장하며, limitPerName은 이름당 조회할 외부 결과 수를 뜻합니다."
+            description = "MCP의 import_foods_by_name 도구가 사용하는 엔드포인트"
+                    + "names의 각 항목에 대해 외부 검색 후 DB에 저장, limitPerName은 이름당 조회할 외부 결과 수"
     )
     @PostMapping("/import")
     public AgentFoodImportResponse importFoods(@Valid @RequestBody AgentFoodImportRequest request) {
         return agentFoodImportService.importFoods(request.names(), request.limitPerName());
+    }
+
+    @Operation(
+            summary = "에이전트 음식 대량 적재",
+            description = "MCP의 bulk_import_foods_by_name 도구가 사용하는 엔드포인트입니다. "
+                    + "names를 순회하며 외부 검색 후 기존 저장 로직으로 한 번에 적재합니다. "
+                    + "limitPerName이 없으면 이름당 1건만 조회합니다."
+    )
+    @PostMapping("/bulk-import")
+    public AgentFoodImportResponse bulkImportFoods(@Valid @RequestBody AgentBulkFoodImportRequest request) {
+        return agentFoodBulkImportService.bulkImportFoods(request.names(), request.limitPerName());
     }
 }
