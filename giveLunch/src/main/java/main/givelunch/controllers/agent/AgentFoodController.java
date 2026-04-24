@@ -46,8 +46,8 @@ public class AgentFoodController {
 
     @Operation(
             summary = "에이전트 음식 저장",
-            description = "MCP의 save_foods 도구가 사용하는 엔드포인트입니다. "
-                    + "전달받은 음식/영양정보를 저장하고 결과별 상태와 집계 카운트를 반환합니다."
+            description = "MCP의 save_foods 도구가 사용하는 엔드포인트"
+                    + "전달받은 음식/영양정보를 저장하고 결과별 상태와 집계 카운트를 반환"
     )
     @PostMapping("/save")
     public AgentFoodImportResponse saveFoods(@Valid @RequestBody AgentFoodSaveRequest request) {
@@ -56,8 +56,8 @@ public class AgentFoodController {
 
     @Operation(
             summary = "에이전트 음식 import",
-            description = "MCP의 import_foods_by_name 도구가 사용하는 엔드포인트입니다. "
-                    + "names의 각 항목에 대해 외부 검색 후 DB에 저장하며, limitPerName은 이름당 조회할 외부 결과 수를 뜻합니다."
+            description = "MCP의 import_foods_by_name 도구가 사용하는 엔드포인트"
+                    + "names의 각 항목에 대해 외부 검색 후 DB에 저장, limitPerName은 이름당 조회할 외부 결과 수"
     )
     @PostMapping("/import")
     public AgentFoodImportResponse importFoods(@Valid @RequestBody AgentFoodImportRequest request) {
