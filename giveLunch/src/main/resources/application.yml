@@ -30,6 +30,8 @@ management:
         http.server.requests: 100ms,300ms,500ms,1s,3s
 
 app:
+  mail:
+    from: ${APP_MAIL_FROM:${spring.mail.username:}}
   rank:
     retention: ${APP_RANK_RETENTION:24h}
   observability:

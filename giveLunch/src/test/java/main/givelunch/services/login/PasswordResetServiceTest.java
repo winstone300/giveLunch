@@ -71,7 +71,7 @@ class PasswordResetServiceTest {
         // given
         String username = "tester";
         String email = "tester@example.com";
-        ReflectionTestUtils.setField(passwordResetService, "mailUsername", "no-reply@givelunch.com");
+        ReflectionTestUtils.setField(passwordResetService, "mailFrom", "no-reply@givelunch.com");
 
         when(userRepository.existsByUserNameAndEmail(username, email)).thenReturn(true);
 

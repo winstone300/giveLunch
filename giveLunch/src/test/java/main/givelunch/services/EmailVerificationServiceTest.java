@@ -65,15 +65,15 @@ class EmailVerificationServiceTest {
 
 
     @Test
-    @DisplayName("메일 전송 시 발신 주소는 설정된 메일 계정을 사용")
-    void sendVerificationCode_usesMailUsernameForFromAddress() {
+    @DisplayName("메일 전송 시 SMTP 계정이 아닌 설정된 발신 주소를 사용")
+    void sendVerificationCode_usesConfiguredFromAddress() {
         // given
         String email = "user@example.com";
-        String username = "no-reply@example.com";
+        String mailFrom = "no-reply@example.com";
         when(userRepository.existsByEmail(email)).thenReturn(false);
         when(verificationSupportService.generateCode()).thenReturn("123456");
 
-        ReflectionTestUtils.setField(emailVerificationService, "mailUsername", username);
+        ReflectionTestUtils.setField(emailVerificationService, "mailFrom", mailFrom);
 
         // when
         emailVerificationService.sendVerificationCode(email);
@@ -81,7 +81,7 @@ class EmailVerificationServiceTest {
         // then
         ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(messageCaptor.capture());
-        assertThat(messageCaptor.getValue().getFrom()).isEqualTo(username);
+        assertThat(messageCaptor.getValue().getFrom()).isEqualTo(mailFrom);
         assertThat(messageCaptor.getValue().getTo()).containsExactly(email);
         verify(emailVerificationRepository).save(any());
         verify(verificationSupportService).validateEmail(email);

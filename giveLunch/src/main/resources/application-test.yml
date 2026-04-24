@@ -1,0 +1,61 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  mail:
+    host: smtp.test.com
+    port: 587
+    username: test.test@test
+    password: teeest
+  flyway:
+    enabled: false
+
+app:
+  mail:
+    from: no-reply@givelunch.test
+  agent-auth:
+    api-key: test-agent-key
+  rank:
+    retention: 24h
+  observability:
+    enabled: false
+    sql:
+      enabled: false
+  menu:
+    defaults:
+      - test menu 1
+      - test menu 2
+    suggest:
+      candidate-fetch-limit: 200
+      result-limit: 10
+  security:
+    permit-all-user:
+      - /
+      - /roulette
+      - /login
+      - /signup
+      - /css/**
+      - /js/**
+      - /images/**
+      - /api/foods/getId
+      - /api/foods/**
+      - /api/ranks/**
+      - /reset-password/**
+      - /forgot-password
+      - /actuator/health
+      - /actuator/prometheus
+    permit-admin:
+      - /admin/**
+    login:
+      max-failed-attempts: 5
+      lock-minutes: 10
+      code-length: 6
+
