@@ -14,7 +14,7 @@ spring:
     host: smtp.test.com
     port: 587
     username: test.test@test
-    password: teeest
+    password: test
   flyway:
     enabled: false
 
