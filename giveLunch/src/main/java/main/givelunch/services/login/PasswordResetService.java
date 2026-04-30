@@ -31,8 +31,8 @@ public class PasswordResetService {
     private final SecurityProperties securityProperties;
     private final VerificationSupportService verificationCodeSupport;
 
-    @Value("${spring.mail.username}")
-    private String mailUsername;
+    @Value("${app.mail.from}")
+    private String mailFrom;
 
     @Transactional
     public void sendResetCode(String userName, String email) {
@@ -113,7 +113,7 @@ public class PasswordResetService {
 
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailUsername);
+        message.setFrom(mailFrom);
         message.setTo(email);
         message.setSubject("GiveLunch 비밀번호 재설정 코드");
         message.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "

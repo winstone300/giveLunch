@@ -1,0 +1,21 @@
+[Unit]
+Description=GiveLunch Spring Boot application
+After=network-online.target mysql.service redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=givelunch
+Group=givelunch
+WorkingDirectory=/opt/givelunch
+Environment=SPRING_PROFILES_ACTIVE=prod
+EnvironmentFile=/etc/givelunch/givelunch.env
+ExecStart=/usr/bin/java -jar /opt/givelunch/app.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

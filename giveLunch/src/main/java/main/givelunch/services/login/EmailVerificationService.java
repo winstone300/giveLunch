@@ -29,8 +29,8 @@ public class EmailVerificationService {
     private final JavaMailSender mailSender;
     private final VerificationSupportService verificationSupportService;
 
-    @Value("${spring.mail.username}")
-    private String mailUsername;
+    @Value("${app.mail.from}")
+    private String mailFrom;
 
     //인증 메일 생성 + 전송 메서드 호출
     @Transactional
@@ -79,7 +79,7 @@ public class EmailVerificationService {
     // 메일 전송
     private void sendMail(String email, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailUsername);
+        message.setFrom(mailFrom);
         message.setTo(email);
         message.setSubject("GiveLunch 회원가입 이메일 인증번호");
         message.setText("회원가입을 위한 이메일 인증번호는 [" + code + "] 입니다. "

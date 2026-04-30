@@ -34,6 +34,8 @@ build/
 
 # Spring
 application-*.yml
+!application-prod.yml
+!application-test.yml
 
 # nGrinder local artifacts
 /perf/ngrinder/results/

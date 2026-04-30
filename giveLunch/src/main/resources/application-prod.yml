@@ -1,0 +1,89 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  mail:
+    from: ${APP_MAIL_FROM}
+  agent-auth:
+    api-key: ${APP_AGENT_AUTH_API_KEY}
+  rank:
+    retention: ${APP_RANK_RETENTION:24h}
+  data-go-kr:
+    base-url: ${APP_DATA_GO_KR_BASE_URL}
+    service-key: ${APP_DATA_GO_KR_SERVICE_KEY}
+    get-api: ${APP_DATA_GO_KR_GET_API}
+    type: ${APP_DATA_GO_KR_TYPE:json}
+    page-size: ${APP_DATA_GO_KR_PAGE_SIZE:10}
+    num-of-rows-admin: ${APP_DATA_GO_KR_NUM_OF_ROWS_ADMIN:50}
+    num-of-rows-user: ${APP_DATA_GO_KR_NUM_OF_ROWS_USER:10}
+  naver:
+    image:
+      base-url: ${APP_NAVER_IMAGE_BASE_URL}
+      search-path: ${APP_NAVER_IMAGE_SEARCH_PATH:/v1/search/image.json}
+      client-id: ${APP_NAVER_IMAGE_CLIENT_ID}
+      client-secret: ${APP_NAVER_IMAGE_CLIENT_SECRET}
+      display: ${APP_NAVER_IMAGE_DISPLAY:5}
+      start: ${APP_NAVER_IMAGE_START:1}
+      sort: ${APP_NAVER_IMAGE_SORT:sim}
+  security:
+    permit-all-user:
+      - /
+      - /roulette
+      - /login
+      - /signup
+      - /css/**
+      - /js/**
+      - /images/**
+      - /api/foods/getId
+      - /api/foods/**
+      - /api/ranks/**
+      - /reset-password/**
+      - /forgot-password
+      - /actuator/health
+      - /actuator/prometheus
+    permit-admin:
+      - /admin/**
+    login:
+      max-failed-attempts: 5
+      lock-minutes: 10
+      code-length: 6
