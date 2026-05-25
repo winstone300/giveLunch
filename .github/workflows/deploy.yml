@@ -1,0 +1,44 @@
+name: CI/CD Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64]
+
+    defaults:
+      run:
+        working-directory: giveLunch
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Test
+        run: ./mvnw test
+
+      - name: Build
+        run: ./mvnw clean package -DskipTests
+
+      - name: Deploy
+        run: |
+          DEPLOY_DIR=/home/ec2-user/giveLunch/giveLunch
+          JAR_NAME=giveLunch-0.0.1-SNAPSHOT.jar
+
+          cp "target/${JAR_NAME}" "${DEPLOY_DIR}/target/${JAR_NAME}.new"
+          mv "${DEPLOY_DIR}/target/${JAR_NAME}.new" "${DEPLOY_DIR}/target/${JAR_NAME}"
+
+          sudo /usr/bin/systemctl restart givelunch
+          sleep 10
+          curl -f http://localhost:8080/ || exit 1
