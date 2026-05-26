@@ -12,6 +12,16 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FoodRepository extends JpaRepository<Food, Long> {
+    @Query("""
+            select distinct f.category from Food f
+            where f.category is not null
+              and f.category <> ''
+            order by f.category
+            """)
+    List<String> findDistinctCategories();
+
+    List<Food> findByCategoryOrderByNameAsc(String category);
+
     // 이름으로 foodID 찾을 때(get api/foods/search)
     @Query("select f.id from Food f where f.name = :name")
     Optional<Long> findIdByName(@Param("name") String name);

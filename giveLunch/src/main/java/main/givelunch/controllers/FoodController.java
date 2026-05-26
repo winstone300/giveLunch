@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
 import main.givelunch.exception.FoodNotFoundException;
 import main.givelunch.services.roulette.FoodNutritionService;
 import main.givelunch.services.roulette.FoodSearchService;
@@ -26,6 +27,18 @@ public class FoodController {
     @GetMapping("/{foodId}/nutrition")
     public FoodAndNutritionDto getFoodNutrition(@PathVariable Long foodId) {
         return foodNutritionService.getFoodNutrition(foodId);
+    }
+
+    @Operation(summary = "음식 카테고리 목록 조회", description = "DB에 저장된 음식 카테고리 목록을 조회")
+    @GetMapping("/categories")
+    public List<String> getCategories() {
+        return foodSearchService.loadCategories();
+    }
+
+    @Operation(summary = "카테고리별 음식 목록 조회", description = "DB에 저장된 음식을 카테고리별로 조회")
+    @GetMapping
+    public List<FoodDto> getFoodsByCategory(@RequestParam("category") String category) {
+        return foodSearchService.loadFoodsByCategory(category);
     }
 
     @Operation(summary = "음식 ID 조회", description = "음식 이름으로 내부 음식 ID를 조회")

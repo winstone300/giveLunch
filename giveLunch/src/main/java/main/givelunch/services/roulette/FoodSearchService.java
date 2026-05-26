@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.dto.FoodAndNutritionDto.FoodAndNutritionDto;
+import main.givelunch.dto.FoodAndNutritionDto.FoodDto;
 import main.givelunch.dto.FoodAndNutritionDto.FoodSuggestionDto;
 import main.givelunch.entities.Food;
 import main.givelunch.exception.ErrorCode;
@@ -66,6 +67,22 @@ public class FoodSearchService {
                         .thenComparing(Food::getName))
                 .limit(suggest.resultLimit())
                 .map(FoodSuggestionDto::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> loadCategories() {
+        return foodRepository.findDistinctCategories();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FoodDto> loadFoodsByCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return List.of();
+        }
+        return foodRepository.findByCategoryOrderByNameAsc(category.trim())
+                .stream()
+                .map(FoodDto::from)
                 .collect(Collectors.toList());
     }
 
