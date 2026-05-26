@@ -70,6 +70,15 @@ class RouletteControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /roulette?loginModalOpen=true: 로그인 모달을 연다")
+    void roulettePageOpensLoginModalWhenRequested() throws Exception {
+        mockMvc.perform(get("/roulette").param("loginModalOpen", "true"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"))
+                .andExpect(model().attribute("loginModalOpen", true));
+    }
+
+    @Test
     @DisplayName("GET /roulette?loginLocked=true: 로그인 잠금 상태와 남은 시간을 전달")
     void roulettePageOpensLoginModalForLockedLogin() throws Exception {
         mockMvc.perform(get("/roulette")

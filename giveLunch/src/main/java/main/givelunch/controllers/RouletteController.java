@@ -29,6 +29,9 @@ public class RouletteController {
     public String roulette(Principal principal,
                            @RequestParam(value = "loginError", defaultValue = "false") boolean loginError,
                            @RequestParam(value = "loginLocked", defaultValue = "false") boolean loginLocked,
+                           @RequestParam(value = "loginSuccess", defaultValue = "false") boolean loginSuccess,
+                           @RequestParam(value = "resetSuccess", defaultValue = "false") boolean resetSuccess,
+                           @RequestParam(value = "loginModalOpen", defaultValue = "false") boolean loginModalOpen,
                            @RequestParam(value = "remainingSeconds", defaultValue = "0") long remainingSeconds,
                            Model model) {
         boolean isLoggedIn = (principal != null);
@@ -40,8 +43,10 @@ public class RouletteController {
         model.addAttribute("isLoggedIn", isLoggedIn);
         model.addAttribute("loginError", loginError);
         model.addAttribute("loginLocked", loginLocked);
+        model.addAttribute("loginSuccess", loginSuccess);
+        model.addAttribute("resetSuccess", resetSuccess);
         model.addAttribute("remainingSeconds", Math.max(remainingSeconds, 0));
-        model.addAttribute("loginModalOpen", loginError || loginLocked);
+        model.addAttribute("loginModalOpen", loginModalOpen || loginError || loginLocked || loginSuccess || resetSuccess);
 
         return "roulette/roulette";
     }

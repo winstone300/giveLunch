@@ -54,7 +54,7 @@ public class SecurityConfig {
                         .defaultAccessDeniedHandlerFor(agentAccessDeniedHandler, request -> request.getRequestURI().startsWith("/api/agent/"))
                 )
                 .formLogin(form -> form
-                        .loginPage("/login")    // GET /login -> 내가 만든 페이지로 이동
+                        .loginPage("/login")    // GET /login -> 룰렛 로그인 모달로 이동
                         .loginProcessingUrl("/login")   // POST /login -> 시큐리티가 처리
                         .usernameParameter("userName")
                         .successHandler((request, response, authentication) -> {
@@ -69,7 +69,6 @@ public class SecurityConfig {
                         })
                         .failureHandler((request, response, exception) -> {
                             String userName = request.getParameter("userName");
-                            boolean fromRoulette = "roulette".equals(request.getParameter("loginSource"));
                             boolean isLocked = exception instanceof LockedException;
                             long remainingSeconds = 0;
                             if (userName != null && !userName.isBlank()) {
@@ -79,18 +78,10 @@ public class SecurityConfig {
                                 }
                             }
                             if (isLocked) {
-                                if (fromRoulette) {
-                                    response.sendRedirect("/roulette?loginLocked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
-                                    return;
-                                }
-                                response.sendRedirect("/login?locked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
+                                response.sendRedirect("/roulette?loginLocked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
                                 return;
                             }
-                            if (fromRoulette) {
-                                response.sendRedirect("/roulette?loginError=true");
-                                return;
-                            }
-                            response.sendRedirect("/login?error=true");
+                            response.sendRedirect("/roulette?loginError=true");
                         })
                         .permitAll()
                 )
