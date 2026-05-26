@@ -126,6 +126,46 @@ class LoginControllerIntegrationTest {
                 .andExpect(redirectedUrlPattern("/login?locked=true&remainingSeconds=*"));
     }
 
+    @Test
+    @DisplayName("POST /login: 룰렛 모달 로그인 실패 시 룰렛 오류 파라미터로 리다이렉트")
+    void rouletteModalLoginFailureRedirectsToRouletteErrorParam() throws Exception {
+        mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("loginSource", "roulette")
+                        .param("userName", "unknownUser")
+                        .param("password", "wrongPassword"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/roulette?loginError=true"));
+    }
+
+    @Test
+    @DisplayName("POST /login: 룰렛 모달 로그인 잠금 시 룰렛 잠금 파라미터로 리다이렉트")
+    void rouletteModalLoginFailureRedirectsToRouletteLockedParamWhenAttemptsExceeded() throws Exception {
+        userRepository.save(UserInfo.builder()
+                .userName("rouletteLockedUser")
+                .password(passwordEncoder.encode("password123"))
+                .email("roulette-locked@example.com")
+                .role(Role.USER)
+                .build());
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/login")
+                            .with(csrf())
+                            .param("loginSource", "roulette")
+                            .param("userName", "rouletteLockedUser")
+                            .param("password", "wrongPassword"))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("loginSource", "roulette")
+                        .param("userName", "rouletteLockedUser")
+                        .param("password", "wrongPassword"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/roulette?loginLocked=true&remainingSeconds=*"));
+    }
+
     private void createVerifiedEmail(String email) {
         LocalDateTime now = LocalDateTime.now();
         EmailVerification verification = EmailVerification.builder()

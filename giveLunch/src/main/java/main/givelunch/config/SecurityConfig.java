@@ -69,6 +69,7 @@ public class SecurityConfig {
                         })
                         .failureHandler((request, response, exception) -> {
                             String userName = request.getParameter("userName");
+                            boolean fromRoulette = "roulette".equals(request.getParameter("loginSource"));
                             boolean isLocked = exception instanceof LockedException;
                             long remainingSeconds = 0;
                             if (userName != null && !userName.isBlank()) {
@@ -78,7 +79,15 @@ public class SecurityConfig {
                                 }
                             }
                             if (isLocked) {
+                                if (fromRoulette) {
+                                    response.sendRedirect("/roulette?loginLocked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
+                                    return;
+                                }
                                 response.sendRedirect("/login?locked=true&remainingSeconds=" + Math.max(remainingSeconds, 0));
+                                return;
+                            }
+                            if (fromRoulette) {
+                                response.sendRedirect("/roulette?loginError=true");
                                 return;
                             }
                             response.sendRedirect("/login?error=true");
