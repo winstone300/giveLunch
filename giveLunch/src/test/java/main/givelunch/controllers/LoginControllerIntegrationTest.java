@@ -46,19 +46,19 @@ class LoginControllerIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    @DisplayName("GET /login: 로그인 요청시 사전에 설정한 로그인 화면 보여줌")
-    void loginPageRendersForAnonymous() throws Exception {
+    @DisplayName("GET /login: 로그인 모달이 열린 룰렛 화면으로 이동")
+    void loginPageRedirectsToRouletteLoginModal() throws Exception {
         // given
 
         // when & then
         mockMvc.perform(get("/login"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("login/login"));
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/roulette?loginModalOpen=true"));
     }
 
     @Test
     @WithMockUser
-    @DisplayName("POST /signup: 회원가입 성공시 회원이 저장되고 로그인 페이지로 이동")
+    @DisplayName("POST /signup: 회원가입 성공시 회원이 저장되고 룰렛 로그인 모달로 이동")
     void signupSuccessPersistsUser() throws Exception {
         // given
         createVerifiedEmail("newuser@example.com");
@@ -70,7 +70,7 @@ class LoginControllerIntegrationTest {
                         .param("passwordConfirm", "password123")
                         .param("email", "newuser@example.com"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?success"));
+                .andExpect(redirectedUrl("/roulette?loginSuccess=true"));
 
         // then
         UserInfo savedUser = userRepository.findByUserName("newuser").orElseThrow();
@@ -101,7 +101,7 @@ class LoginControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /login: 로그인 시도 횟수 초과 시 locked 파라미터로 리다이렉트")
+    @DisplayName("POST /login: 로그인 시도 횟수 초과 시 룰렛 잠금 파라미터로 리다이렉트")
     void loginFailureRedirectsWithLockedParamWhenAttemptsExceeded() throws Exception {
         userRepository.save(UserInfo.builder()
                 .userName("lockedUser")
@@ -123,7 +123,47 @@ class LoginControllerIntegrationTest {
                         .param("userName", "lockedUser")
                         .param("password", "wrongPassword"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrlPattern("/login?locked=true&remainingSeconds=*"));
+                .andExpect(redirectedUrlPattern("/roulette?loginLocked=true&remainingSeconds=*"));
+    }
+
+    @Test
+    @DisplayName("POST /login: 룰렛 모달 로그인 실패 시 룰렛 오류 파라미터로 리다이렉트")
+    void rouletteModalLoginFailureRedirectsToRouletteErrorParam() throws Exception {
+        mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("loginSource", "roulette")
+                        .param("userName", "unknownUser")
+                        .param("password", "wrongPassword"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/roulette?loginError=true"));
+    }
+
+    @Test
+    @DisplayName("POST /login: 룰렛 모달 로그인 잠금 시 룰렛 잠금 파라미터로 리다이렉트")
+    void rouletteModalLoginFailureRedirectsToRouletteLockedParamWhenAttemptsExceeded() throws Exception {
+        userRepository.save(UserInfo.builder()
+                .userName("rouletteLockedUser")
+                .password(passwordEncoder.encode("password123"))
+                .email("roulette-locked@example.com")
+                .role(Role.USER)
+                .build());
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/login")
+                            .with(csrf())
+                            .param("loginSource", "roulette")
+                            .param("userName", "rouletteLockedUser")
+                            .param("password", "wrongPassword"))
+                    .andExpect(status().is3xxRedirection());
+        }
+
+        mockMvc.perform(post("/login")
+                        .with(csrf())
+                        .param("loginSource", "roulette")
+                        .param("userName", "rouletteLockedUser")
+                        .param("password", "wrongPassword"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrlPattern("/roulette?loginLocked=true&remainingSeconds=*"));
     }
 
     private void createVerifiedEmail(String email) {

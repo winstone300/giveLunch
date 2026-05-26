@@ -48,8 +48,8 @@ class ViewExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("BindException 루트 경로: 로그인 화면으로 fallback")
-    void handleBindExceptionOnRootPathFallsBackToLogin() {
+    @DisplayName("BindException 루트 경로: 룰렛 로그인 모달로 fallback")
+    void handleBindExceptionOnRootPathFallsBackToLoginModal() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRequestURI()).thenReturn("/");
 
@@ -58,7 +58,6 @@ class ViewExceptionHandlerTest {
 
         ModelAndView modelAndView = handler.handleBindException(bindException, request);
 
-        assertThat(modelAndView.getViewName()).isEqualTo("login/login");
-        assertThat(modelAndView.getModel().get("error")).isEqualTo("아이디를 입력해주세요.");
+        assertThat(modelAndView.getViewName()).isEqualTo("redirect:/roulette?loginError=true");
     }
 }
