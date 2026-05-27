@@ -59,5 +59,17 @@ jobs:
           mv "${DEPLOY_DIR}/target/${JAR_NAME}.new" "${DEPLOY_DIR}/target/${JAR_NAME}"
 
           sudo /usr/bin/systemctl restart givelunch
-          sleep 10
-          curl -f http://localhost:8080/ || exit 1
+
+          for attempt in {1..30}; do
+            if curl -fsS http://localhost:8080/ > /dev/null; then
+              echo "giveLunch is responding."
+              exit 0
+            fi
+
+            echo "Waiting for giveLunch to start... (${attempt}/30)"
+            sleep 3
+          done
+
+          sudo /usr/bin/systemctl status givelunch --no-pager
+          sudo /usr/bin/journalctl -u givelunch -n 100 --no-pager
+          exit 1
