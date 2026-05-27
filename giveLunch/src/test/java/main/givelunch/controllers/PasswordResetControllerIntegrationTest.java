@@ -128,7 +128,7 @@ class PasswordResetControllerIntegrationTest {
 
     @Test
     @WithMockUser
-    @DisplayName("POST /reset-password: 정상 요청 시 비밀번호 변경 후 로그인 페이지로 이동")
+    @DisplayName("POST /reset-password: 정상 요청 시 비밀번호 변경 후 룰렛 로그인 모달로 이동")
     void resetPasswordUpdatesPasswordAndMarksTokenUsed() throws Exception {
         userRepository.save(UserInfo.builder()
                 .userName("resetuser")
@@ -150,9 +150,9 @@ class PasswordResetControllerIntegrationTest {
                         .param("email", "reset2@example.com")
                         .param("code", "654321")
                         .param("password", "newPassword")
-                        .param("passwordConfirm", "newPassword"))
+                .param("passwordConfirm", "newPassword"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/login?resetSuccess"));
+                .andExpect(redirectedUrl("/roulette?resetSuccess=true"));
 
         UserInfo updated = userRepository.findByEmail("reset2@example.com").orElseThrow();
         assertThat(passwordEncoder.matches("newPassword", updated.getPassword())).isTrue();

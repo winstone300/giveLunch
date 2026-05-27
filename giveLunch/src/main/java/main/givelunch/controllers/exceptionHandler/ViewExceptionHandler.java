@@ -32,7 +32,7 @@ public class ViewExceptionHandler {
         if (path.endsWith("/reset-password")) {
             return buildView("login/reset-password", message);
         }
-        return buildView("login/login", message);
+        return redirectToLoginModal();
     }
 
     // 입력 오류시 호출
@@ -53,13 +53,17 @@ public class ViewExceptionHandler {
         if (path.endsWith("/reset-password")) {
             return buildView("login/reset-password", e.getMessage());
         }
-        return buildView("login/login", e.getMessage());
+        return redirectToLoginModal();
     }
 
     private ModelAndView buildView(String viewName, String message) {
         ModelAndView modelAndView = new ModelAndView(viewName);
         modelAndView.addObject("error", message);
         return modelAndView;
+    }
+
+    private ModelAndView redirectToLoginModal() {
+        return new ModelAndView("redirect:/roulette?loginError=true");
     }
 
     private String normalizePath(HttpServletRequest request) {

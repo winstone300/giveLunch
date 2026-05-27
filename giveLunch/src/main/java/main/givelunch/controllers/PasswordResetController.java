@@ -42,6 +42,6 @@ public class PasswordResetController {
     @PostMapping("/reset-password")
     public String resetPassword(@Valid @ModelAttribute PasswordResetConfirmDto req) {
         passwordResetService.resetPassword(req.email(), req.code(), req.password(), req.passwordConfirm());
-        return "redirect:/login?resetSuccess";
+        return "redirect:/roulette?resetSuccess=true";
     }
 }

@@ -26,7 +26,14 @@ public class RouletteController {
     private final FoodSearchService foodSearchService;
 
     @GetMapping({"/","/roulette"})
-    public String roulette(Principal principal, Model model) {
+    public String roulette(Principal principal,
+                           @RequestParam(value = "loginError", defaultValue = "false") boolean loginError,
+                           @RequestParam(value = "loginLocked", defaultValue = "false") boolean loginLocked,
+                           @RequestParam(value = "loginSuccess", defaultValue = "false") boolean loginSuccess,
+                           @RequestParam(value = "resetSuccess", defaultValue = "false") boolean resetSuccess,
+                           @RequestParam(value = "loginModalOpen", defaultValue = "false") boolean loginModalOpen,
+                           @RequestParam(value = "remainingSeconds", defaultValue = "0") long remainingSeconds,
+                           Model model) {
         boolean isLoggedIn = (principal != null);
         String userName = isLoggedIn ? principal.getName() : "GUEST";
         List<MenuDto> menuList = menuService.loadMenu(userName);
@@ -34,6 +41,12 @@ public class RouletteController {
         model.addAttribute("menuList", menuList);
         model.addAttribute("userName", userName);
         model.addAttribute("isLoggedIn", isLoggedIn);
+        model.addAttribute("loginError", loginError);
+        model.addAttribute("loginLocked", loginLocked);
+        model.addAttribute("loginSuccess", loginSuccess);
+        model.addAttribute("resetSuccess", resetSuccess);
+        model.addAttribute("remainingSeconds", Math.max(remainingSeconds, 0));
+        model.addAttribute("loginModalOpen", loginModalOpen || loginError || loginLocked || loginSuccess || resetSuccess);
 
         return "roulette/roulette";
     }

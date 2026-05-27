@@ -18,6 +18,22 @@
         .auth-btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; text-decoration: none; font-size: 14px; }
         .login-btn { background: var(--primary); color: white; }
         .logout-btn { background: #dfe6e9; color: #636e72; }
+        .login-modal-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, 0.55); }
+        .login-modal-overlay.is-hidden { display: none; }
+        .login-modal { width: 100%; max-width: 360px; background: #ffffff; border-radius: 2px; padding: 26px 18px 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.24); }
+        .login-modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+        .login-modal-title { margin: 0 0 6px; font-size: 22px; font-weight: 800; color: #111827; }
+        .login-modal-sub { margin: 0; color: #636e72; font-size: 14px; }
+        .login-modal-close { border: none; background: transparent; color: #b2bec3; width: 34px; height: 34px; cursor: pointer; font-size: 24px; line-height: 1; flex-shrink: 0; }
+        .login-modal label { display: block; margin: 12px 0 6px; font-size: 13px; color: #374151; }
+        .login-modal input[type="text"], .login-modal input[type="password"] { width: 100%; box-sizing: border-box; }
+        .login-submit-btn { width: 100%; margin-top: 14px; padding: 12px 14px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .login-modal-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 10px; }
+        .login-modal-link { color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 600; }
+        .login-modal-link:hover { text-decoration: underline; }
+        .login-divider { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin: 16px 0; color: #9ca3af; font-size: 12px; }
+        .login-divider::before, .login-divider::after { content: ""; height: 1px; background: #e5e7eb; }
+        .login-error-msg { color: #d63031; background: #fff5f5; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; border: 1px solid #ffd6d6; }
         .rank-container { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .rank-preview { font-weight: 700; color: #2d3436; display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: #f1f2f6; }
         .rank-preview .rank-name { font-weight: 700; }
@@ -242,9 +258,62 @@
         <div class="rank-list" id="rank-list"></div>
     </div>
     <div class="header-right">
-        <a th:if="${!isLoggedIn}" th:href="@{/login}" class="auth-btn login-btn">로그인</a>
+        <button th:if="${!isLoggedIn}" type="button" class="auth-btn login-btn" id="open-login-modal" data-login-modal-trigger>로그인</button>
         <form th:if="${isLoggedIn}" th:action="@{/logout}" method="post">
             <button type="submit" class="auth-btn logout-btn">로그아웃</button>
+        </form>
+    </div>
+</div>
+
+<div th:if="${!isLoggedIn}" id="login-modal" class="login-modal-overlay"
+     th:classappend="${loginModalOpen} ? '' : ' is-hidden'"
+     th:attr="aria-hidden=${!loginModalOpen}" role="presentation">
+    <div class="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="login-modal-header">
+            <div>
+                <h1 class="login-modal-title" id="login-modal-title">로그인</h1>
+                <p class="login-modal-sub">계정으로 로그인해서 계속 진행하세요.</p>
+            </div>
+            <button class="login-modal-close" type="button" id="close-login-modal" aria-label="닫기">x</button>
+        </div>
+
+        <div th:if="${loginLocked}" class="login-error-msg">
+            시도횟수를 초과했습니다. 잠금 해제까지 <span id="modalLockRemainingText">남은 시간 계산 중...</span>
+        </div>
+
+        <div th:if="${loginError}" class="login-error-msg">
+            아이디 또는 비밀번호가 일치하지 않습니다.
+        </div>
+
+        <div th:if="${loginSuccess}" class="login-error-msg" style="color: #059669; background: #ecfdf5; border-color: #d1fae5;">
+            회원가입이 완료되었습니다. 로그인해주세요.
+        </div>
+
+        <div th:if="${resetSuccess}" class="login-error-msg" style="color: #059669; background: #ecfdf5; border-color: #d1fae5;">
+            비밀번호가 재설정되었습니다. 다시 로그인해주세요.
+        </div>
+
+        <form method="post" th:action="@{/login}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <input type="hidden" name="loginSource" value="roulette" />
+
+            <label for="modalUserName">아이디</label>
+            <input id="modalUserName" name="userName" type="text" placeholder="아이디를 입력하세요" required />
+
+            <label for="modalPassword">비밀번호</label>
+            <input id="modalPassword" name="password" type="password" placeholder="비밀번호를 입력하세요" required />
+
+            <div class="login-modal-row">
+                <a class="login-modal-link" th:href="@{/forgot-password}">비밀번호 찾기</a>
+            </div>
+
+            <button type="submit" class="login-submit-btn">로그인</button>
+
+            <div class="login-divider">또는</div>
+
+            <p class="muted" style="text-align:center;">
+                계정이 없나요? <a class="login-modal-link" th:href="@{/signup}">회원가입</a>
+            </p>
         </form>
     </div>
 </div>
@@ -346,9 +415,16 @@
     const foodModalMeta = document.getElementById('food-modal-meta');
     const foodModalContent = document.getElementById('food-modal-content');
     const foodModalAdd = document.getElementById('food-modal-add');
+    const loginModal = document.getElementById('login-modal');
+    const openLoginModalButton = document.getElementById('open-login-modal');
+    const closeLoginModalButton = document.getElementById('close-login-modal');
+    const modalUserName = document.getElementById('modalUserName');
+    const modalLockRemainingText = document.getElementById('modalLockRemainingText');
 
     // 1. 초기 데이터 설정
     const isLoggedIn = [[${isLoggedIn}]];
+    const shouldOpenLoginModal = [[${loginModalOpen}]];
+    let remainingLockSeconds = [[${remainingSeconds}]];
     let currentMenu = [[${menuList}]]; // 서버가 준 데이터 (로그인 시 DB값, 비로그인 시 기본값)
     let currentRotation = 0;
     let selectedFoodId = null;
@@ -373,6 +449,68 @@
             .replaceAll('>', '&gt;')
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#39;');
+    }
+
+    function openLoginModal() {
+        if (!loginModal) return;
+        loginModal.classList.remove('is-hidden');
+        loginModal.setAttribute('aria-hidden', 'false');
+        setTimeout(() => modalUserName?.focus(), 0);
+    }
+
+    function closeLoginModal() {
+        if (!loginModal) return;
+        loginModal.classList.add('is-hidden');
+        loginModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function formatLockTime(seconds) {
+        const safeSeconds = Math.max(seconds, 0);
+        const minutes = Math.floor(safeSeconds / 60);
+        const secs = safeSeconds % 60;
+        return `${minutes}분 ${secs}초`;
+    }
+
+    function initLoginModal() {
+        openLoginModalButton?.addEventListener('click', openLoginModal);
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-login-modal-trigger], a[href="/login"], a[href$="/login"]');
+            if (!trigger || !loginModal) return;
+            if (trigger.closest('#login-modal')) return;
+            event.preventDefault();
+            openLoginModal();
+        });
+        closeLoginModalButton?.addEventListener('click', closeLoginModal);
+        loginModal?.addEventListener('click', (event) => {
+            if (event.target === loginModal) {
+                closeLoginModal();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && loginModal && !loginModal.classList.contains('is-hidden')) {
+                closeLoginModal();
+            }
+        });
+
+        if (modalLockRemainingText) {
+            const render = () => {
+                modalLockRemainingText.textContent = formatLockTime(remainingLockSeconds);
+            };
+            render();
+            if (remainingLockSeconds > 0) {
+                const timer = setInterval(() => {
+                    remainingLockSeconds -= 1;
+                    render();
+                    if (remainingLockSeconds <= 0) {
+                        clearInterval(timer);
+                    }
+                }, 1000);
+            }
+        }
+
+        if (shouldOpenLoginModal) {
+            openLoginModal();
+        }
     }
 
     function scheduleRankRetry() {
@@ -1007,9 +1145,9 @@
                                 '${menuName}' 정보가 내부 DB에 없습니다.<br>
                                 외부 데이터 검색은 회원만 가능합니다.
                             </div>
-                            <a href="/login" class="auth-btn login-btn" style="display:inline-block; font-size:13px; text-decoration:none;">
+                            <button type="button" class="auth-btn login-btn" style="display:inline-block; font-size:13px;" data-login-modal-trigger>
                                 로그인 하러 가기
-                            </a>
+                            </button>
                         </div>
                     `;
                     return; // 함수 종료 (API 호출 안함)
@@ -1074,6 +1212,7 @@
     }
 
     updateGame();
+    initLoginModal();
     initRankRotation();
     loadFoodCategories();
 </script>

@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="GiveLunchApplication local" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="giveLunch" />
+    <option name="ACTIVE_PROFILES" value="local" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=local -Dspring.config.additional-location=file:giveLunch/src/main/resources/application-local.yml -Dspring.flyway.baseline-on-migrate=true" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="main.givelunch.GiveLunchApplication" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

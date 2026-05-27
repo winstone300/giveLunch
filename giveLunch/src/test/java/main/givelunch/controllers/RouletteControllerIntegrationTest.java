@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
@@ -41,6 +42,55 @@ class RouletteControllerIntegrationTest {
 
     @Autowired
     private MenuProperties menuProperties;
+
+    @Test
+    @DisplayName("GET /roulette: 비로그인 사용자는 로그인 모달 버튼과 폼을 확인")
+    void roulettePageShowsLoginModalForAnonymous() throws Exception {
+        mockMvc.perform(get("/roulette"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"))
+                .andExpect(model().attribute("isLoggedIn", false))
+                .andExpect(model().attribute("loginModalOpen", false))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"open-login-modal\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-login-modal-trigger")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"login-modal\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"loginSource\" value=\"roulette\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("<a href=\"/login\""))));
+    }
+
+    @Test
+    @DisplayName("GET /roulette?loginError=true: 로그인 오류 상태로 모달을 연다")
+    void roulettePageOpensLoginModalForLoginError() throws Exception {
+        mockMvc.perform(get("/roulette").param("loginError", "true"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"))
+                .andExpect(model().attribute("loginError", true))
+                .andExpect(model().attribute("loginLocked", false))
+                .andExpect(model().attribute("loginModalOpen", true));
+    }
+
+    @Test
+    @DisplayName("GET /roulette?loginModalOpen=true: 로그인 모달을 연다")
+    void roulettePageOpensLoginModalWhenRequested() throws Exception {
+        mockMvc.perform(get("/roulette").param("loginModalOpen", "true"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"))
+                .andExpect(model().attribute("loginModalOpen", true));
+    }
+
+    @Test
+    @DisplayName("GET /roulette?loginLocked=true: 로그인 잠금 상태와 남은 시간을 전달")
+    void roulettePageOpensLoginModalForLockedLogin() throws Exception {
+        mockMvc.perform(get("/roulette")
+                        .param("loginLocked", "true")
+                        .param("remainingSeconds", "60"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("roulette/roulette"))
+                .andExpect(model().attribute("loginError", false))
+                .andExpect(model().attribute("loginLocked", true))
+                .andExpect(model().attribute("remainingSeconds", 60L))
+                .andExpect(model().attribute("loginModalOpen", true));
+    }
 
     @Test
     @WithMockUser(username = "tester")
