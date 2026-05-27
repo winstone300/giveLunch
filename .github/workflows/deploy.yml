@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    runs-on: [self-hosted, Linux, X64]
+  build:
+    runs-on: ubuntu-latest
 
     defaults:
       run:
@@ -28,18 +28,34 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x ./mvnw
 
-      - name: Test
-        run: ./mvnw test
+      - name: Test and Build
+        run: ./mvnw -B clean package
 
-      - name: Build
-        run: ./mvnw clean package -DskipTests
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: givelunch-jar
+          path: giveLunch/target/giveLunch-0.0.1-SNAPSHOT.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: givelunch-jar
+          path: deploy-artifact
 
       - name: Deploy
         run: |
           DEPLOY_DIR=/home/ec2-user/giveLunch/giveLunch
           JAR_NAME=giveLunch-0.0.1-SNAPSHOT.jar
 
-          cp "target/${JAR_NAME}" "${DEPLOY_DIR}/target/${JAR_NAME}.new"
+          cp "deploy-artifact/${JAR_NAME}" "${DEPLOY_DIR}/target/${JAR_NAME}.new"
           mv "${DEPLOY_DIR}/target/${JAR_NAME}.new" "${DEPLOY_DIR}/target/${JAR_NAME}"
 
           sudo /usr/bin/systemctl restart givelunch
