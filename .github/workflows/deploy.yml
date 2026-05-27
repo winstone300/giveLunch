@@ -28,11 +28,8 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x ./mvnw
 
-      - name: Test
-        run: ./mvnw test
-
-      - name: Build
-        run: ./mvnw clean package -DskipTests
+      - name: Test and Build
+        run: ./mvnw -B clean package
 
       - name: Deploy
         run: |
