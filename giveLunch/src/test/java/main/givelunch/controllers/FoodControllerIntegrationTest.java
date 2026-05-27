@@ -3,6 +3,8 @@ package main.givelunch.controllers;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -76,6 +78,41 @@ class FoodControllerIntegrationTest {
         mockMvc.perform(get("/api/foods/search").param("name", "우동"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(String.valueOf(food.getId())));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("GET /api/foods/categories: DB에 저장된 음식 카테고리 목록을 조회")
+    void getCategoriesReturnsDistinctFoodCategories() throws Exception {
+        foodRepository.save(Food.from(sampleFoodDto("비빔밥", "한식", 610)));
+        foodRepository.save(Food.from(sampleFoodDto("파스타", "양식", 640)));
+        foodRepository.save(Food.from(sampleFoodDto("김치찌개", "한식", 320)));
+
+        mockMvc.perform(get("/api/foods/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", containsInAnyOrder("한식", "양식")));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("GET /api/foods?category=: 카테고리별 음식 목록을 조회")
+    void getFoodsByCategoryReturnsMatchingFoods() throws Exception {
+        Food bibimbap = foodRepository.save(Food.from(sampleFoodDto("비빔밥", "한식", 610)));
+        Food pasta = foodRepository.save(Food.from(sampleFoodDto("파스타", "양식", 640)));
+
+        mockMvc.perform(get("/api/foods").param("category", "한식"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(bibimbap.getId()))
+                .andExpect(jsonPath("$[0].name").value("비빔밥"))
+                .andExpect(jsonPath("$[0].category").value("한식"))
+                .andExpect(jsonPath("$[0].imgUrl").value("http://example.com/food.png"));
+
+        mockMvc.perform(get("/api/foods").param("category", "양식"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(pasta.getId()))
+                .andExpect(jsonPath("$[0].name").value("파스타"));
     }
 
     @Test
