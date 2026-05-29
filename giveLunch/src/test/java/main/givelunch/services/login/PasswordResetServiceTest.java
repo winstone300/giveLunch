@@ -7,9 +7,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.mail.Session;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
@@ -26,7 +30,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -67,13 +70,16 @@ class PasswordResetServiceTest {
 
     @Test
     @DisplayName("sendResetCode - 유저 정보가 맞으면 토큰 저장 후 메일 전송")
-    void sendResetCode_savesTokenAndSendsMail() {
+    void sendResetCode_savesTokenAndSendsMail() throws Exception {
         // given
         String username = "tester";
         String email = "tester@example.com";
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
         ReflectionTestUtils.setField(passwordResetService, "mailFrom", "no-reply@givelunch.com");
+        ReflectionTestUtils.setField(passwordResetService, "mailFromName", "giveLunch");
 
         when(userRepository.existsByUserNameAndEmail(username, email)).thenReturn(true);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
         // when
         passwordResetService.sendResetCode(username, email);
@@ -88,10 +94,13 @@ class PasswordResetServiceTest {
         assertThat(savedToken.getExpiresAt()).isAfter(savedToken.getCreatedAt());
         assertThat(savedToken.isVerified()).isFalse();
 
-        ArgumentCaptor<SimpleMailMessage> mailCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        ArgumentCaptor<MimeMessage> mailCaptor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(mailCaptor.capture());
-        assertThat(mailCaptor.getValue().getFrom()).isEqualTo("no-reply@givelunch.com");
-        assertThat(mailCaptor.getValue().getTo()).containsExactly(email);
+        InternetAddress from = (InternetAddress) mailCaptor.getValue().getFrom()[0];
+        InternetAddress to = (InternetAddress) mailCaptor.getValue().getAllRecipients()[0];
+        assertThat(from.getAddress()).isEqualTo("no-reply@givelunch.com");
+        assertThat(from.getPersonal()).isEqualTo("giveLunch");
+        assertThat(to.getAddress()).isEqualTo(email);
     }
 
     @Test
@@ -107,7 +116,7 @@ class PasswordResetServiceTest {
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);
 
         verify(passwordResetTokenRepository, never()).save(any());
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test

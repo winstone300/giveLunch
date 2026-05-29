@@ -1,17 +1,22 @@
 package main.givelunch.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDateTime;
+import java.util.Properties;
 import main.givelunch.entities.EmailVerification;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
 import main.givelunch.repositories.EmailVerificationRepository;
 import main.givelunch.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +46,12 @@ class EmailVerificationControllerIntegrationTest {
 
     @MockitoBean
     private JavaMailSender mailSender;
+
+    @BeforeEach
+    void setUpMailSender() {
+        when(mailSender.createMimeMessage())
+                .thenAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
+    }
 
     @Test
     @DisplayName("POST /signup/email/send: 비로그인 상태에서 인증 코드 발송 후 email_verifications 테이블에 저장")

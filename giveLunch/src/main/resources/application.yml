@@ -30,6 +30,7 @@ management:
 app:
   mail:
     from: ${APP_MAIL_FROM:${spring.mail.username:}}
+    from-name: ${APP_MAIL_FROM_NAME:GiveLunch}
   rank:
     retention: ${APP_RANK_RETENTION:24h}
   observability:

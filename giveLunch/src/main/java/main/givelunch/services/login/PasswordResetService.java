@@ -1,5 +1,10 @@
 package main.givelunch.services.login;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +17,8 @@ import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +38,9 @@ public class PasswordResetService {
 
     @Value("${app.mail.from}")
     private String mailFrom;
+
+    @Value("${app.mail.from-name:GiveLunch}")
+    private String mailFromName;
 
     @Transactional
     public void sendResetCode(String userName, String email) {
@@ -112,17 +120,25 @@ public class PasswordResetService {
 
 
     private void sendMail(String email, String code) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(email);
-        message.setSubject("GiveLunch 비밀번호 재설정 코드");
-        message.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "
-                + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
         try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+            helper.setFrom(createFromAddress());
+            helper.setTo(email);
+            helper.setSubject("GiveLunch 비밀번호 재설정 코드");
+            helper.setText("비밀번호 재설정 코드 [" + code + "] 입니다. "
+                    + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
             mailSender.send(message);
-        } catch (MailException e) {
+        } catch (MailException | MessagingException | UnsupportedEncodingException e) {
             log.warn("Failed to send password reset email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
+    }
+
+    private InternetAddress createFromAddress() throws MessagingException, UnsupportedEncodingException {
+        if (mailFromName == null || mailFromName.isBlank()) {
+            return new InternetAddress(mailFrom);
+        }
+        return new InternetAddress(mailFrom, mailFromName, StandardCharsets.UTF_8.name());
     }
 }

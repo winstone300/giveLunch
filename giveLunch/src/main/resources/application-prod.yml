@@ -44,6 +44,7 @@ management:
 app:
   mail:
     from: ${APP_MAIL_FROM}
+    from-name: ${APP_MAIL_FROM_NAME:GiveLunch}
   agent-auth:
     api-key: ${APP_AGENT_AUTH_API_KEY}
   rank:
