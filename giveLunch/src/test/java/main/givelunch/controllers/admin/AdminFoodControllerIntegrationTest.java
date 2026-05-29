@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.persistence.EntityManager;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import main.givelunch.entities.Food;
 import main.givelunch.entities.Nutrition;
@@ -21,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -122,6 +125,70 @@ class AdminFoodControllerIntegrationTest {
 
         Nutrition nutrition = nutritionRepository.findByFoodId(savedFood.getId()).orElseThrow();
         assertThat(nutrition.getCalories()).isEqualByComparingTo("450.00");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("POST /api/admin/foods/import/preview: CSV 파일을 미리보기로 파싱")
+    void previewFoodImportParsesCsv() throws Exception {
+        String csv = "name,category,calories,carbohydrate,protein,fat\n"
+                + "김밥,분식,350,55,12,8\n"
+                + ",한식,120,20,5,2\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "foods.csv",
+                "text/csv",
+                csv.getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/admin/foods/import/preview")
+                        .file(file)
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.validCount").value(1))
+                .andExpect(jsonPath("$.invalidCount").value(1))
+                .andExpect(jsonPath("$.rows[0].rowNumber").value(1))
+                .andExpect(jsonPath("$.rows[1].rowNumber").value(2))
+                .andExpect(jsonPath("$.rows[0].name").value("김밥"))
+                .andExpect(jsonPath("$.rows[0].category").value("기타"))
+                .andExpect(jsonPath("$.rows[1].valid").value(false));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("POST /api/admin/foods/import: 신규 음식은 저장하고 기존 음식은 skip")
+    void importFoodsPersistsNewRowsAndSkipsDuplicateNames() throws Exception {
+        mockMvc.perform(post("/api/admin/foods")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildFoodRequestJson("기존음식", "한식", 450)))
+                .andExpect(status().isCreated());
+
+        String importRequest = """
+                {
+                  "items": [
+                    {"rowNumber":1,"name":"신규음식","category":"양식","imgUrl":null,"servingSizeG":200,"nutrition":{"calories":500,"protein":10,"fat":5,"carbohydrate":80}},
+                    {"rowNumber":2,"name":"기존음식","category":"한식","imgUrl":null,"servingSizeG":100,"nutrition":null},
+                    {"rowNumber":3,"name":" ","category":"일식","imgUrl":null,"servingSizeG":100,"nutrition":null}
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/admin/foods/import")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(importRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savedCount").value(1))
+                .andExpect(jsonPath("$.skippedCount").value(1))
+                .andExpect(jsonPath("$.failedCount").value(1))
+                .andExpect(jsonPath("$.results[0].status").value("SAVED"))
+                .andExpect(jsonPath("$.results[1].status").value("SKIPPED"))
+                .andExpect(jsonPath("$.results[2].status").value("FAILED"));
+
+        assertThat(foodRepository.findByName("신규음식")).isPresent();
+        assertThat(foodRepository.findByName("기존음식")).isPresent();
+        assertThat(foodRepository.findAll()).hasSize(2);
     }
 
     @Test
