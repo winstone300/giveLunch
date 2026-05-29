@@ -1,6 +1,7 @@
 package main.givelunch.controllers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,13 +11,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
+import jakarta.mail.Session;
+import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDateTime;
+import java.util.Properties;
 import main.givelunch.entities.PasswordResetToken;
 import main.givelunch.entities.UserInfo;
 import main.givelunch.model.Role;
 import main.givelunch.properties.SecurityProperties;
 import main.givelunch.repositories.PasswordResetTokenRepository;
 import main.givelunch.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +57,12 @@ class PasswordResetControllerIntegrationTest {
 
     @MockitoBean
     private JavaMailSender javaMailSender;
+
+    @BeforeEach
+    void setUpMailSender() {
+        when(javaMailSender.createMimeMessage())
+                .thenAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
+    }
 
     @Test
     @WithMockUser
