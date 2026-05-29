@@ -71,6 +71,7 @@ app:
       - /roulette
       - /login
       - /signup
+      - /signup/email/**
       - /css/**
       - /js/**
       - /images/**
