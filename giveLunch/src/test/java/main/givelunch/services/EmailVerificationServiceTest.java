@@ -7,9 +7,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.mail.Session;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import main.givelunch.entities.EmailVerification;
 import main.givelunch.exception.ErrorCode;
 import main.givelunch.exception.ValidationException;
@@ -26,7 +30,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -65,24 +68,31 @@ class EmailVerificationServiceTest {
 
 
     @Test
-    @DisplayName("메일 전송 시 SMTP 계정이 아닌 설정된 발신 주소를 사용")
-    void sendVerificationCode_usesConfiguredFromAddress() {
+    @DisplayName("메일 전송 시 설정된 발신 주소와 표시 이름을 사용")
+    void sendVerificationCode_usesConfiguredFromAddress() throws Exception {
         // given
         String email = "user@example.com";
         String mailFrom = "no-reply@example.com";
+        String mailFromName = "giveLunch";
+        MimeMessage mimeMessage = new MimeMessage(Session.getInstance(new Properties()));
         when(userRepository.existsByEmail(email)).thenReturn(false);
         when(verificationSupportService.generateCode()).thenReturn("123456");
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
         ReflectionTestUtils.setField(emailVerificationService, "mailFrom", mailFrom);
+        ReflectionTestUtils.setField(emailVerificationService, "mailFromName", mailFromName);
 
         // when
         emailVerificationService.sendVerificationCode(email);
 
         // then
-        ArgumentCaptor<SimpleMailMessage> messageCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(messageCaptor.capture());
-        assertThat(messageCaptor.getValue().getFrom()).isEqualTo(mailFrom);
-        assertThat(messageCaptor.getValue().getTo()).containsExactly(email);
+        InternetAddress from = (InternetAddress) messageCaptor.getValue().getFrom()[0];
+        InternetAddress to = (InternetAddress) messageCaptor.getValue().getAllRecipients()[0];
+        assertThat(from.getAddress()).isEqualTo(mailFrom);
+        assertThat(from.getPersonal()).isEqualTo(mailFromName);
+        assertThat(to.getAddress()).isEqualTo(email);
         verify(emailVerificationRepository).save(any());
         verify(verificationSupportService).validateEmail(email);
     }
@@ -101,7 +111,7 @@ class EmailVerificationServiceTest {
                 .isEqualTo(ErrorCode.DUPLICATE_EMAIL);
 
         // then
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
         verify(emailVerificationRepository, never()).save(any());
     }
 

@@ -1,6 +1,10 @@
 package main.givelunch.services.login;
 
-import java.security.SecureRandom;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import main.givelunch.entities.EmailVerification;
@@ -13,8 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,9 @@ public class EmailVerificationService {
 
     @Value("${app.mail.from}")
     private String mailFrom;
+
+    @Value("${app.mail.from-name:GiveLunch}")
+    private String mailFromName;
 
     //인증 메일 생성 + 전송 메서드 호출
     @Transactional
@@ -78,17 +85,25 @@ public class EmailVerificationService {
 
     // 메일 전송
     private void sendMail(String email, String code) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(mailFrom);
-        message.setTo(email);
-        message.setSubject("GiveLunch 회원가입 이메일 인증번호");
-        message.setText("회원가입을 위한 이메일 인증번호는 [" + code + "] 입니다. "
-                + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
         try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+            helper.setFrom(createFromAddress());
+            helper.setTo(email);
+            helper.setSubject("GiveLunch 회원가입 이메일 인증번호");
+            helper.setText("회원가입을 위한 이메일 인증번호는 [" + code + "] 입니다. "
+                    + securityProperties.login().lockMinutes() + "분 내에 입력해주세요.");
             mailSender.send(message);
-        } catch (MailException e) {
+        } catch (MailException | MessagingException | UnsupportedEncodingException e) {
             logger.warn("Failed to send verification email to {}", email, e);
             throw new ValidationException(ErrorCode.EMAIL_SEND_FAILED);
         }
+    }
+
+    private InternetAddress createFromAddress() throws MessagingException, UnsupportedEncodingException {
+        if (mailFromName == null || mailFromName.isBlank()) {
+            return new InternetAddress(mailFrom);
+        }
+        return new InternetAddress(mailFrom, mailFromName, StandardCharsets.UTF_8.name());
     }
 }

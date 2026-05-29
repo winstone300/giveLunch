@@ -21,6 +21,7 @@ spring:
 app:
   mail:
     from: no-reply@givelunch.test
+    from-name: GiveLunch
   agent-auth:
     api-key: test-agent-key
   rank:
