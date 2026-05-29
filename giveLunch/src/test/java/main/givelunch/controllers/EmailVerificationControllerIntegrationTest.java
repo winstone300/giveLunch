@@ -19,7 +19,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,8 +43,7 @@ class EmailVerificationControllerIntegrationTest {
     private JavaMailSender mailSender;
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /signup/email/send: 인증 코드 발송 후 email_verifications 테이블에 저장")
+    @DisplayName("POST /signup/email/send: 비로그인 상태에서 인증 코드 발송 후 email_verifications 테이블에 저장")
     void sendVerificationSavesCode() throws Exception {
         mockMvc.perform(post("/signup/email/send")
                         .with(csrf())
@@ -63,8 +61,7 @@ class EmailVerificationControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /signup/email/verify: 인증 코드 확인 성공 시 verified=true")
+    @DisplayName("POST /signup/email/verify: 비로그인 상태에서 인증 코드 확인 성공 시 verified=true")
     void verifyCodeMarksAsVerified() throws Exception {
         emailVerificationRepository.save(EmailVerification.builder()
                 .email("verify@example.com")
@@ -87,8 +84,7 @@ class EmailVerificationControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /signup/email/verify: 인증 실패 시 남은 시도 횟수 메시지 반환")
+    @DisplayName("POST /signup/email/verify: 비로그인 상태에서 인증 실패 시 남은 시도 횟수 메시지 반환")
     void verifyCodeReturnsRemainingAttemptsMessageOnFailure() throws Exception {
         emailVerificationRepository.save(EmailVerification.builder()
                 .email("fail@example.com")
@@ -108,8 +104,7 @@ class EmailVerificationControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser
-    @DisplayName("POST /signup/email/send: 이미 가입된 이메일이면 409 반환")
+    @DisplayName("POST /signup/email/send: 비로그인 상태에서 이미 가입된 이메일이면 409 반환")
     void sendVerificationReturnsConflictForDuplicateEmail() throws Exception {
         userRepository.save(UserInfo.builder()
                 .userName("existing")
