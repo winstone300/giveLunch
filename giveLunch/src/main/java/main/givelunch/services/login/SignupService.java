@@ -33,4 +33,9 @@ public class SignupService {
         userRepository.save(user);
         emailVerificationRepository.deleteByEmail(req.email());
     }
+
+    @Transactional(readOnly = true)
+    public boolean isUserNameAvailable(String userName) {
+        return !userRepository.existsByUserName(userName);
+    }
 }

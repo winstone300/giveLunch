@@ -1,6 +1,8 @@
 spring:
   application:
     name: giveLunch
+  profiles:
+    default: local
   data:
     redis:
       host: localhost
