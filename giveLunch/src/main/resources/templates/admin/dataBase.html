@@ -621,6 +621,7 @@
     const closeImportModal = () => {
         importModal.classList.add('hidden');
         importModal.setAttribute('aria-hidden', 'true');
+        resetImportPreview();
     };
 
     const applyExternalFood = (dto) => {
