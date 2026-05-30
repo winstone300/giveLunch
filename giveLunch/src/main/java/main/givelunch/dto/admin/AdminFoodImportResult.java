@@ -11,6 +11,10 @@ public record AdminFoodImportResult(
         return new AdminFoodImportResult(rowNumber, name, AdminFoodImportStatus.SAVED, foodId, null);
     }
 
+    public static AdminFoodImportResult updated(Integer rowNumber, String name, Long foodId) {
+        return new AdminFoodImportResult(rowNumber, name, AdminFoodImportStatus.UPDATED, foodId, null);
+    }
+
     public static AdminFoodImportResult skipped(Integer rowNumber, String name, Long foodId, String reason) {
         return new AdminFoodImportResult(rowNumber, name, AdminFoodImportStatus.SKIPPED, foodId, reason);
     }

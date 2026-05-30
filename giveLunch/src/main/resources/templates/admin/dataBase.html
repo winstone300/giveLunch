@@ -269,8 +269,51 @@
             border: 1px solid #e2e8f0;
             border-radius: 12px;
         }
+        .preview-table-wrap table {
+            min-width: 760px;
+        }
+        .preview-table-wrap th,
+        .preview-table-wrap td {
+            vertical-align: middle;
+        }
         .preview-table-wrap.hidden {
             display: none;
+        }
+        .preview-select-cell {
+            width: 44px;
+            text-align: center;
+        }
+        .preview-image-cell {
+            width: 72px;
+        }
+        .preview-image {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            display: block;
+        }
+        .preview-image-empty {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            background: #f8fafc;
+        }
+        .import-select {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .import-select:disabled {
+            cursor: not-allowed;
         }
         .status-badge {
             display: inline-block;
@@ -282,7 +325,8 @@
             color: #334155;
         }
         .status-badge.valid,
-        .status-badge.saved {
+        .status-badge.saved,
+        .status-badge.updated {
             background: #dcfce7;
             color: #166534;
         }
@@ -428,7 +472,11 @@
                 <table>
                     <thead>
                     <tr>
+                        <th class="preview-select-cell">
+                            <input class="import-select" id="food-import-select-all" type="checkbox" aria-label="전체 항목 선택" disabled>
+                        </th>
                         <th>행</th>
+                        <th>이미지</th>
                         <th>이름</th>
                         <th>카테고리</th>
                         <th>영양정보</th>
@@ -474,6 +522,7 @@
     const importPreviewBody = document.getElementById('food-import-preview-body');
     const importSubmitButton = document.getElementById('food-import-submit');
     const importClearButton = document.getElementById('food-import-clear');
+    const importSelectAll = document.getElementById('food-import-select-all');
 
     const listState = {
         page: 0,
@@ -503,6 +552,7 @@
 
     let importPreviewRows = [];
     let importResultsByRow = new Map();
+    let selectedImportRows = new Set();
 
     const request = (url, options = {}) => {
         const headers = options.headers ? {...options.headers} : {};
@@ -541,9 +591,14 @@
     const resetImportPreview = () => {
         importPreviewRows = [];
         importResultsByRow = new Map();
+        selectedImportRows = new Set();
         importPreviewBody.innerHTML = '';
         importPreviewWrap.classList.add('hidden');
         importSubmitButton.disabled = true;
+        importSubmitButton.textContent = 'DB 등록';
+        importSelectAll.checked = false;
+        importSelectAll.indeterminate = false;
+        importSelectAll.disabled = true;
         importStatus.textContent = '';
         importFileInput.value = '';
     };
@@ -783,6 +838,56 @@
         return data.nutrition ?? null;
     };
 
+    const buildSelectedImportItems = () => importPreviewRows
+        .filter((row) => row.valid && selectedImportRows.has(row.rowNumber))
+        .map((row) => ({
+            rowNumber: row.rowNumber,
+            name: row.name,
+            category: row.category,
+            imgUrl: row.imgUrl,
+            servingSizeG: row.servingSizeG,
+            nutrition: row.nutrition
+        }));
+
+    const sendImportRequest = async (items, overwriteExisting) => {
+        const resp = await request('/api/admin/foods/import', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({items, overwriteExisting})
+        });
+
+        if (!resp.ok) {
+            return {
+                ok: false,
+                message: await resp.text() || 'DB 등록에 실패했습니다.'
+            };
+        }
+
+        return {
+            ok: true,
+            data: await resp.json()
+        };
+    };
+
+    const summarizeImportResults = (results) => {
+        const countByStatus = (status) => results.filter((result) => result.status === status).length;
+        return `등록 완료: 저장 ${countByStatus('SAVED')}건 · 덮어쓰기 ${countByStatus('UPDATED')}건 · 중복 ${countByStatus('SKIPPED')}건 · 실패 ${countByStatus('FAILED')}건`;
+    };
+
+    const updateImportSelectionState = () => {
+        const validRows = importPreviewRows.filter((row) => row.valid);
+        const selectedCount = validRows.filter((row) => selectedImportRows.has(row.rowNumber)).length;
+
+        importSubmitButton.disabled = selectedCount === 0;
+        importSelectAll.disabled = validRows.length === 0;
+        importSelectAll.checked = validRows.length > 0 && selectedCount === validRows.length;
+        importSelectAll.indeterminate = selectedCount > 0 && selectedCount < validRows.length;
+
+        if (importPreviewRows.length > 0) {
+            importSubmitButton.textContent = selectedCount > 0 ? `DB 등록 (${selectedCount})` : 'DB 등록';
+        }
+    };
+
     const renderImportPreview = () => {
         importPreviewBody.innerHTML = '';
         importPreviewWrap.classList.toggle('hidden', importPreviewRows.length === 0);
@@ -800,10 +905,19 @@
                     row.nutrition.fat != null ? `지 ${row.nutrition.fat}g` : null
                 ].filter(Boolean).join(' · ')
                 : '-';
+            const image = row.imgUrl
+                ? `<a href="${escapeHtml(row.imgUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(row.name || '음식')} 이미지 원본 열기"><img class="preview-image" src="${escapeHtml(row.imgUrl)}" alt="${escapeHtml(row.name || '음식')} 이미지" loading="lazy"></a>`
+                : '<div class="preview-image-empty">없음</div>';
+            const checked = selectedImportRows.has(row.rowNumber) ? 'checked' : '';
+            const disabled = row.valid ? '' : 'disabled';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td class="preview-select-cell">
+                    <input class="import-select import-row-select" type="checkbox" data-row-number="${escapeHtml(row.rowNumber)}" aria-label="${escapeHtml(row.name || row.rowNumber)} 선택" ${checked} ${disabled}>
+                </td>
                 <td>${escapeHtml(row.rowNumber)}</td>
+                <td class="preview-image-cell">${image}</td>
                 <td>${escapeHtml(row.name || '-')}</td>
                 <td>${escapeHtml(row.category || '-')}</td>
                 <td>${escapeHtml(nutrition)}</td>
@@ -812,7 +926,7 @@
             importPreviewBody.appendChild(tr);
         });
 
-        importSubmitButton.disabled = !importPreviewRows.some((row) => row.valid);
+        updateImportSelectionState();
     };
 
     const previewImportFile = async (file) => {
@@ -837,21 +951,13 @@
 
         const data = await resp.json();
         importPreviewRows = data.rows ?? [];
+        selectedImportRows = new Set(importPreviewRows.filter((row) => row.valid).map((row) => row.rowNumber));
         importStatus.textContent = `미리보기 완료: 유효 ${data.validCount ?? 0}건 · 오류 ${data.invalidCount ?? 0}건`;
         renderImportPreview();
     };
 
     const submitImportRows = async () => {
-        const items = importPreviewRows
-            .filter((row) => row.valid)
-            .map((row) => ({
-                rowNumber: row.rowNumber,
-                name: row.name,
-                category: row.category,
-                imgUrl: row.imgUrl,
-                servingSizeG: row.servingSizeG,
-                nutrition: row.nutrition
-            }));
+        const items = buildSelectedImportItems();
 
         if (!items.length) {
             importStatus.textContent = '등록할 유효 항목이 없습니다.';
@@ -860,21 +966,39 @@
 
         importSubmitButton.disabled = true;
         importStatus.textContent = 'DB 등록 중...';
-        const resp = await request('/api/admin/foods/import', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({items})
-        });
-
-        if (!resp.ok) {
-            importStatus.textContent = await resp.text() || 'DB 등록에 실패했습니다.';
+        const firstResponse = await sendImportRequest(items, false);
+        if (!firstResponse.ok) {
+            importStatus.textContent = firstResponse.message;
             importSubmitButton.disabled = false;
             return;
         }
 
-        const data = await resp.json();
-        importResultsByRow = new Map((data.results ?? []).map((result) => [result.rowNumber, result]));
-        importStatus.textContent = `등록 완료: 저장 ${data.savedCount ?? 0}건 · 중복 ${data.skippedCount ?? 0}건 · 실패 ${data.failedCount ?? 0}건`;
+        let results = firstResponse.data.results ?? [];
+        const duplicateResults = results.filter((result) => result.status === 'SKIPPED');
+        if (duplicateResults.length > 0) {
+            const overwrite = window.confirm(`이미 등록된 음식 ${duplicateResults.length}건이 있습니다. 기존 정보를 덮어씌울까요?\n확인: 덮어쓰기 / 취소: 건너뛰기`);
+            if (overwrite) {
+                importStatus.textContent = `중복 ${duplicateResults.length}건 덮어쓰기 중...`;
+                const duplicateRowNumbers = new Set(duplicateResults.map((result) => result.rowNumber));
+                const overwriteItems = items.filter((item) => duplicateRowNumbers.has(item.rowNumber));
+                const overwriteResponse = await sendImportRequest(overwriteItems, true);
+                if (!overwriteResponse.ok) {
+                    importStatus.textContent = overwriteResponse.message;
+                    importSubmitButton.disabled = false;
+                    return;
+                }
+
+                const overwrittenResults = overwriteResponse.data.results ?? [];
+                const overwrittenRowNumbers = new Set(overwrittenResults.map((result) => result.rowNumber));
+                results = results
+                    .filter((result) => !overwrittenRowNumbers.has(result.rowNumber))
+                    .concat(overwrittenResults);
+            }
+        }
+
+        importResultsByRow = new Map(results.map((result) => [result.rowNumber, result]));
+        selectedImportRows = new Set();
+        importStatus.textContent = summarizeImportResults(results);
         renderImportPreview();
         await loadFoods();
     };
@@ -941,6 +1065,26 @@
         event.preventDefault();
         importDropzone.classList.remove('dragover');
         previewImportFile(event.dataTransfer?.files?.[0]);
+    });
+    importSelectAll.addEventListener('change', () => {
+        const validRows = importPreviewRows.filter((row) => row.valid);
+        selectedImportRows = importSelectAll.checked
+            ? new Set(validRows.map((row) => row.rowNumber))
+            : new Set();
+        renderImportPreview();
+    });
+    importPreviewBody.addEventListener('change', (event) => {
+        if (!event.target.classList.contains('import-row-select')) {
+            return;
+        }
+
+        const rowNumber = Number(event.target.dataset.rowNumber);
+        if (event.target.checked) {
+            selectedImportRows.add(rowNumber);
+        } else {
+            selectedImportRows.delete(rowNumber);
+        }
+        updateImportSelectionState();
     });
     importSubmitButton.addEventListener('click', submitImportRows);
     importClearButton.addEventListener('click', resetImportPreview);

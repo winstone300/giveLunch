@@ -193,6 +193,48 @@ class AdminFoodControllerIntegrationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    @DisplayName("POST /api/admin/foods/import: overwriteExisting=true이면 기존 음식을 덮어쓴다")
+    void importFoodsOverwritesDuplicateNamesWhenRequested() throws Exception {
+        mockMvc.perform(post("/api/admin/foods")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildFoodRequestJson("기존음식", "한식", 450)))
+                .andExpect(status().isCreated());
+
+        Long foodId = foodRepository.findByName("기존음식").orElseThrow().getId();
+        String importRequest = """
+                {
+                  "overwriteExisting": true,
+                  "items": [
+                    {"rowNumber":1,"name":"기존음식","category":"양식","imgUrl":"https://img.example.com/new.png","servingSizeG":250,"nutrition":{"calories":700,"protein":30,"fat":20,"carbohydrate":90}}
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/admin/foods/import")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(importRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.savedCount").value(0))
+                .andExpect(jsonPath("$.updatedCount").value(1))
+                .andExpect(jsonPath("$.skippedCount").value(0))
+                .andExpect(jsonPath("$.failedCount").value(0))
+                .andExpect(jsonPath("$.results[0].status").value("UPDATED"))
+                .andExpect(jsonPath("$.results[0].foodId").value(foodId));
+
+        entityManager.flush();
+        entityManager.clear();
+        Food updatedFood = foodRepository.findById(foodId).orElseThrow();
+        assertThat(updatedFood.getCategory()).isEqualTo("양식");
+        assertThat(updatedFood.getImgUrl()).isEqualTo("https://img.example.com/new.png");
+        assertThat(updatedFood.getServingSizeG()).isEqualTo(250);
+        Nutrition updatedNutrition = nutritionRepository.findByFoodId(foodId).orElseThrow();
+        assertThat(updatedNutrition.getCalories()).isEqualByComparingTo("700.00");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("PUT /api/admin/foods/{id}: 관리자가 음식과 영양 정보를 수정")
     void updateFoodAndNutritionUpdatesData() throws Exception {
         // given

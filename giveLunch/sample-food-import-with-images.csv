@@ -1,0 +1,11 @@
+이름,카테고리,이미지URL,1회제공량g,칼로리,탄수화물,단백질,지방
+김치찌개,한식,https://placehold.co/240x180/f87171/ffffff.png?text=Kimchi+Jjigae,450,320,18,24,16
+비빔밥,한식,https://placehold.co/240x180/22c55e/ffffff.png?text=Bibimbap,500,560,82,20,14
+불고기,한식,https://placehold.co/240x180/a16207/ffffff.png?text=Bulgogi,300,420,22,35,18
+짜장면,중식,https://placehold.co/240x180/78350f/ffffff.png?text=Jjajangmyeon,650,780,112,23,22
+탕수육,중식,https://placehold.co/240x180/f59e0b/ffffff.png?text=Tangsuyuk,300,690,72,28,34
+초밥,일식,https://placehold.co/240x180/0ea5e9/ffffff.png?text=Sushi,260,410,68,22,8
+라멘,일식,https://placehold.co/240x180/ef4444/ffffff.png?text=Ramen,550,610,78,26,18
+파스타,양식,https://placehold.co/240x180/f97316/ffffff.png?text=Pasta,420,720,96,24,24
+스테이크,양식,https://placehold.co/240x180/7f1d1d/ffffff.png?text=Steak,280,640,10,52,42
+햄버거,기타,https://placehold.co/240x180/2563eb/ffffff.png?text=Burger,220,540,48,27,29

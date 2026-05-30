@@ -71,13 +71,13 @@ public class AdminFoodImportService {
                 : request.items();
 
         for (AdminFoodImportItem item : items) {
-            results.add(importSingle(item));
+            results.add(importSingle(item, request != null && request.overwriteExisting()));
         }
 
         return AdminFoodImportResponse.from(results);
     }
 
-    private AdminFoodImportResult importSingle(AdminFoodImportItem item) {
+    private AdminFoodImportResult importSingle(AdminFoodImportItem item, boolean overwriteExisting) {
         Integer rowNumber = item == null ? null : item.rowNumber();
         String name = normalizeName(item == null ? null : item.name());
         if (name == null) {
@@ -85,7 +85,7 @@ public class AdminFoodImportService {
         }
 
         Optional<Long> existingId = foodRepository.findIdByName(name);
-        if (existingId.isPresent()) {
+        if (existingId.isPresent() && !overwriteExisting) {
             return AdminFoodImportResult.skipped(rowNumber, name, existingId.get(), DUPLICATE_REASON);
         }
 
@@ -98,6 +98,11 @@ public class AdminFoodImportService {
                 item.nutrition(),
                 "admin-file-import"
         );
+        if (existingId.isPresent()) {
+            adminService.updateFoodAndNutrition(existingId.get(), dto);
+            return AdminFoodImportResult.updated(rowNumber, name, existingId.get());
+        }
+
         Food savedFood = adminService.saveFoodAndNutrition(dto);
         return AdminFoodImportResult.saved(rowNumber, name, savedFood.getId());
     }

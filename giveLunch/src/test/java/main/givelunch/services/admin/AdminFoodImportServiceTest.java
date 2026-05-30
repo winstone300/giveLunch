@@ -2,6 +2,7 @@ package main.givelunch.services.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -120,6 +121,27 @@ class AdminFoodImportServiceTest {
         verify(adminService).saveFoodAndNutrition(captor.capture());
         assertThat(captor.getValue().category()).isEqualTo("한식");
         verify(adminService, never()).saveFoodAndNutrition(new FoodAndNutritionDto(null, "기존음식", "양식", null, null, null, null));
+    }
+
+    @Test
+    @DisplayName("importFoods - overwriteExisting=true이면 기존 음식을 덮어쓴다")
+    void importFoodsOverwritesDuplicateWhenRequested() {
+        when(foodRepository.findIdByName("기존음식")).thenReturn(Optional.of(7L));
+
+        AdminFoodImportResponse response = adminFoodImportService.importFoods(new AdminFoodImportRequest(java.util.List.of(
+                new AdminFoodImportItem(2, "기존음식", "양식", "https://img.example.com/new.png", 300, null)
+        ), true));
+
+        assertThat(response.updatedCount()).isEqualTo(1);
+        assertThat(response.results().get(0).status()).isEqualTo(AdminFoodImportStatus.UPDATED);
+        assertThat(response.results().get(0).foodId()).isEqualTo(7L);
+
+        ArgumentCaptor<FoodAndNutritionDto> captor = ArgumentCaptor.forClass(FoodAndNutritionDto.class);
+        verify(adminService).updateFoodAndNutrition(eq(7L), captor.capture());
+        assertThat(captor.getValue().name()).isEqualTo("기존음식");
+        assertThat(captor.getValue().category()).isEqualTo("양식");
+        assertThat(captor.getValue().imgUrl()).isEqualTo("https://img.example.com/new.png");
+        verify(adminService, never()).saveFoodAndNutrition(any(FoodAndNutritionDto.class));
     }
 
     private byte[] buildXlsx() throws Exception {
