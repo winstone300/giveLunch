@@ -23,6 +23,11 @@
             gap: 16px;
             margin-bottom: 12px;
         }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .logout-btn {
             background: #e2e8f0;
             color: #1f2937;
@@ -66,11 +71,13 @@
             font-size: 13px;
             color: #475569;
         }
-        input {
+        input,
+        select {
             border: 1px solid #cbd5f5;
             border-radius: 10px;
             padding: 10px 12px;
             font-size: 14px;
+            background: #ffffff;
         }
         .actions {
             display: flex;
@@ -159,10 +166,15 @@
         }
         .modal {
             width: min(560px, 100%);
+            max-height: calc(100vh - 48px);
+            overflow: auto;
             background: #ffffff;
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        }
+        .modal.import-modal {
+            width: min(920px, 100%);
         }
         .modal-header {
             display: flex;
@@ -228,6 +240,105 @@
             align-items: center;
             gap: 8px;
         }
+        .file-import {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .file-dropzone {
+            border: 1px dashed #94a3b8;
+            border-radius: 12px;
+            padding: 18px;
+            background: #f8fafc;
+            text-align: center;
+            color: #475569;
+            cursor: pointer;
+        }
+        .file-dropzone.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .file-input {
+            display: none;
+        }
+        .preview-table-wrap {
+            margin-top: 12px;
+            max-height: 260px;
+            overflow: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+        .preview-table-wrap table {
+            min-width: 760px;
+        }
+        .preview-table-wrap th,
+        .preview-table-wrap td {
+            vertical-align: middle;
+        }
+        .preview-table-wrap.hidden {
+            display: none;
+        }
+        .preview-select-cell {
+            width: 44px;
+            text-align: center;
+        }
+        .preview-image-cell {
+            width: 72px;
+        }
+        .preview-image {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            display: block;
+        }
+        .preview-image-empty {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            background: #f8fafc;
+        }
+        .import-select {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .import-select:disabled {
+            cursor: not-allowed;
+        }
+        .status-badge {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #e2e8f0;
+            color: #334155;
+        }
+        .status-badge.valid,
+        .status-badge.saved,
+        .status-badge.updated {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-badge.invalid,
+        .status-badge.failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .status-badge.skipped {
+            background: #fef3c7;
+            color: #92400e;
+        }
         @media (max-width: 960px) {
             .layout {
                 grid-template-columns: 1fr;
@@ -238,10 +349,13 @@
 <body>
 <div class="header">
     <h1>🍱 foods / nutritions 관리</h1>
-    <form th:action="@{/logout}" method="post">
-        <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}">
-        <button type="submit" class="logout-btn">로그아웃</button>
-    </form>
+    <div class="header-actions">
+        <button class="primary" type="button" id="food-import-open">파일 등록</button>
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf?.parameterName}" th:value="${_csrf?.token}">
+            <button type="submit" class="logout-btn">로그아웃</button>
+        </form>
+    </div>
 </div>
 <div class="subtitle">음식 정보와 영양 정보를 등록, 수정, 삭제할 수 있습니다.</div>
 
@@ -264,7 +378,13 @@
             </div>
             <div class="form-group">
                 <label for="food-category">카테고리</label>
-                <input id="food-category" type="text" placeholder="예: 한식">
+                <select id="food-category" required>
+                    <option value="한식">한식</option>
+                    <option value="중식">중식</option>
+                    <option value="일식">일식</option>
+                    <option value="양식">양식</option>
+                    <option value="기타">기타</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="food-img">이미지 URL</label>
@@ -336,6 +456,44 @@
     </div>
 </div>
 
+<div class="modal-overlay hidden" id="food-import-modal" aria-hidden="true">
+    <div class="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="food-import-modal-title">
+        <div class="modal-header">
+            <div class="modal-title" id="food-import-modal-title">파일 등록</div>
+            <button class="modal-close" type="button" id="food-import-close" aria-label="닫기">✕</button>
+        </div>
+        <div class="file-import">
+            <input class="file-input" id="food-import-file" type="file" accept=".csv,.xlsx">
+            <div class="file-dropzone" id="food-import-dropzone">
+                CSV/XLSX 파일을 첨부하거나 드래그하세요.
+            </div>
+            <div class="notice" id="food-import-status"></div>
+            <div class="preview-table-wrap hidden" id="food-import-preview-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th class="preview-select-cell">
+                            <input class="import-select" id="food-import-select-all" type="checkbox" aria-label="전체 항목 선택" disabled>
+                        </th>
+                        <th>행</th>
+                        <th>이미지</th>
+                        <th>이름</th>
+                        <th>카테고리</th>
+                        <th>영양정보</th>
+                        <th>상태</th>
+                    </tr>
+                    </thead>
+                    <tbody id="food-import-preview-body"></tbody>
+                </table>
+            </div>
+            <div class="actions">
+                <button class="primary" type="button" id="food-import-submit" disabled>DB 등록</button>
+                <button class="secondary" type="button" id="food-import-clear">비우기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -354,6 +512,17 @@
     const listPrevButton = document.getElementById('list-prev-btn');
     const listNextButton = document.getElementById('list-next-btn');
     const listPageInfo = document.getElementById('list-page-info');
+    const importOpenButton = document.getElementById('food-import-open');
+    const importModal = document.getElementById('food-import-modal');
+    const importModalClose = document.getElementById('food-import-close');
+    const importFileInput = document.getElementById('food-import-file');
+    const importDropzone = document.getElementById('food-import-dropzone');
+    const importStatus = document.getElementById('food-import-status');
+    const importPreviewWrap = document.getElementById('food-import-preview-wrap');
+    const importPreviewBody = document.getElementById('food-import-preview-body');
+    const importSubmitButton = document.getElementById('food-import-submit');
+    const importClearButton = document.getElementById('food-import-clear');
+    const importSelectAll = document.getElementById('food-import-select-all');
 
     const listState = {
         page: 0,
@@ -375,6 +544,16 @@
         fat: document.getElementById('food-fat')
     };
 
+    const primaryCategories = new Set(['한식', '중식', '일식', '양식']);
+    const normalizeCategory = (category) => {
+        const value = (category ?? '').trim();
+        return primaryCategories.has(value) ? value : '기타';
+    };
+
+    let importPreviewRows = [];
+    let importResultsByRow = new Map();
+    let selectedImportRows = new Set();
+
     const request = (url, options = {}) => {
         const headers = options.headers ? {...options.headers} : {};
         if (csrfToken && csrfHeader && options.method && options.method !== 'GET') {
@@ -383,9 +562,16 @@
         return fetch(url, {...options, headers});
     };
 
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
     const getPayload = () => ({
         name: fields.name.value.trim(),
-        category: fields.category.value.trim() || null,
+        category: fields.category.value,
         imgUrl: fields.imgUrl.value.trim() || null,
         servingSizeG: fields.servingSizeG.value ? Number(fields.servingSizeG.value) : null,
         nutrition: {
@@ -402,6 +588,21 @@
         formStatus.textContent = '';
     };
 
+    const resetImportPreview = () => {
+        importPreviewRows = [];
+        importResultsByRow = new Map();
+        selectedImportRows = new Set();
+        importPreviewBody.innerHTML = '';
+        importPreviewWrap.classList.add('hidden');
+        importSubmitButton.disabled = true;
+        importSubmitButton.textContent = 'DB 등록';
+        importSelectAll.checked = false;
+        importSelectAll.indeterminate = false;
+        importSelectAll.disabled = true;
+        importStatus.textContent = '';
+        importFileInput.value = '';
+    };
+
     const openSearchModal = () => {
         searchModal.classList.remove('hidden');
         searchModal.setAttribute('aria-hidden', 'false');
@@ -412,10 +613,21 @@
         searchModal.setAttribute('aria-hidden', 'true');
     };
 
+    const openImportModal = () => {
+        importModal.classList.remove('hidden');
+        importModal.setAttribute('aria-hidden', 'false');
+    };
+
+    const closeImportModal = () => {
+        importModal.classList.add('hidden');
+        importModal.setAttribute('aria-hidden', 'true');
+        resetImportPreview();
+    };
+
     const applyExternalFood = (dto) => {
         fields.id.value = '';
         fields.name.value = dto.name ?? '';
-        fields.category.value = dto.category ?? '';
+        fields.category.value = normalizeCategory(dto.category);
         fields.imgUrl.value = dto.imgUrl ?? '';
         fields.servingSizeG.value = dto.servingSizeG ?? '';
         fields.calories.value = dto.nutrition?.calories ?? '';
@@ -541,7 +753,7 @@
             row.querySelector('[data-action="edit"]').addEventListener('click', async () => {
                 fields.id.value = food.id;
                 fields.name.value = food.name ?? '';
-                fields.category.value = food.category ?? '';
+                fields.category.value = normalizeCategory(food.category);
                 fields.imgUrl.value = food.imgUrl ?? '';
                 fields.servingSizeG.value = food.servingSizeG ?? '';
                 fields.calories.value = '';
@@ -627,6 +839,171 @@
         return data.nutrition ?? null;
     };
 
+    const buildSelectedImportItems = () => importPreviewRows
+        .filter((row) => row.valid && selectedImportRows.has(row.rowNumber))
+        .map((row) => ({
+            rowNumber: row.rowNumber,
+            name: row.name,
+            category: row.category,
+            imgUrl: row.imgUrl,
+            servingSizeG: row.servingSizeG,
+            nutrition: row.nutrition
+        }));
+
+    const sendImportRequest = async (items, overwriteExisting) => {
+        const resp = await request('/api/admin/foods/import', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({items, overwriteExisting})
+        });
+
+        if (!resp.ok) {
+            return {
+                ok: false,
+                message: await resp.text() || 'DB 등록에 실패했습니다.'
+            };
+        }
+
+        return {
+            ok: true,
+            data: await resp.json()
+        };
+    };
+
+    const summarizeImportResults = (results) => {
+        const countByStatus = (status) => results.filter((result) => result.status === status).length;
+        return `등록 완료: 저장 ${countByStatus('SAVED')}건 · 덮어쓰기 ${countByStatus('UPDATED')}건 · 중복 ${countByStatus('SKIPPED')}건 · 실패 ${countByStatus('FAILED')}건`;
+    };
+
+    const updateImportSelectionState = () => {
+        const validRows = importPreviewRows.filter((row) => row.valid);
+        const selectedCount = validRows.filter((row) => selectedImportRows.has(row.rowNumber)).length;
+
+        importSubmitButton.disabled = selectedCount === 0;
+        importSelectAll.disabled = validRows.length === 0;
+        importSelectAll.checked = validRows.length > 0 && selectedCount === validRows.length;
+        importSelectAll.indeterminate = selectedCount > 0 && selectedCount < validRows.length;
+
+        if (importPreviewRows.length > 0) {
+            importSubmitButton.textContent = selectedCount > 0 ? `DB 등록 (${selectedCount})` : 'DB 등록';
+        }
+    };
+
+    const renderImportPreview = () => {
+        importPreviewBody.innerHTML = '';
+        importPreviewWrap.classList.toggle('hidden', importPreviewRows.length === 0);
+
+        importPreviewRows.forEach((row) => {
+            const result = importResultsByRow.get(row.rowNumber);
+            const status = result?.status?.toLowerCase() ?? (row.valid ? 'valid' : 'invalid');
+            const label = result?.status ?? (row.valid ? 'VALID' : 'INVALID');
+            const reason = result?.reason ?? row.reason ?? '';
+            const nutrition = row.nutrition
+                ? [
+                    row.nutrition.calories != null ? `${row.nutrition.calories}kcal` : null,
+                    row.nutrition.carbohydrate != null ? `탄 ${row.nutrition.carbohydrate}g` : null,
+                    row.nutrition.protein != null ? `단 ${row.nutrition.protein}g` : null,
+                    row.nutrition.fat != null ? `지 ${row.nutrition.fat}g` : null
+                ].filter(Boolean).join(' · ')
+                : '-';
+            const image = row.imgUrl
+                ? `<a href="${escapeHtml(row.imgUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(row.name || '음식')} 이미지 원본 열기"><img class="preview-image" src="${escapeHtml(row.imgUrl)}" alt="${escapeHtml(row.name || '음식')} 이미지" loading="lazy"></a>`
+                : '<div class="preview-image-empty">없음</div>';
+            const checked = selectedImportRows.has(row.rowNumber) ? 'checked' : '';
+            const disabled = row.valid ? '' : 'disabled';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="preview-select-cell">
+                    <input class="import-select import-row-select" type="checkbox" data-row-number="${escapeHtml(row.rowNumber)}" aria-label="${escapeHtml(row.name || row.rowNumber)} 선택" ${checked} ${disabled}>
+                </td>
+                <td>${escapeHtml(row.rowNumber)}</td>
+                <td class="preview-image-cell">${image}</td>
+                <td>${escapeHtml(row.name || '-')}</td>
+                <td>${escapeHtml(row.category || '-')}</td>
+                <td>${escapeHtml(nutrition)}</td>
+                <td><span class="status-badge ${escapeHtml(status)}">${escapeHtml(label)}</span>${reason ? ` ${escapeHtml(reason)}` : ''}</td>
+            `;
+            importPreviewBody.appendChild(tr);
+        });
+
+        updateImportSelectionState();
+    };
+
+    const previewImportFile = async (file) => {
+        if (!file) {
+            return;
+        }
+
+        importStatus.textContent = '파일 분석 중...';
+        importResultsByRow = new Map();
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const resp = await request('/api/admin/foods/import/preview', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!resp.ok) {
+            importStatus.textContent = await resp.text() || '파일을 분석하지 못했습니다.';
+            return;
+        }
+
+        const data = await resp.json();
+        importPreviewRows = data.rows ?? [];
+        selectedImportRows = new Set(importPreviewRows.filter((row) => row.valid).map((row) => row.rowNumber));
+        importStatus.textContent = `미리보기 완료: 유효 ${data.validCount ?? 0}건 · 오류 ${data.invalidCount ?? 0}건`;
+        renderImportPreview();
+    };
+
+    const submitImportRows = async () => {
+        const items = buildSelectedImportItems();
+
+        if (!items.length) {
+            importStatus.textContent = '등록할 유효 항목이 없습니다.';
+            return;
+        }
+
+        importSubmitButton.disabled = true;
+        importStatus.textContent = 'DB 등록 중...';
+        const firstResponse = await sendImportRequest(items, false);
+        if (!firstResponse.ok) {
+            importStatus.textContent = firstResponse.message;
+            importSubmitButton.disabled = false;
+            return;
+        }
+
+        let results = firstResponse.data.results ?? [];
+        const duplicateResults = results.filter((result) => result.status === 'SKIPPED');
+        if (duplicateResults.length > 0) {
+            const overwrite = window.confirm(`이미 등록된 음식 ${duplicateResults.length}건이 있습니다. 기존 정보를 덮어씌울까요?\n확인: 덮어쓰기 / 취소: 건너뛰기`);
+            if (overwrite) {
+                importStatus.textContent = `중복 ${duplicateResults.length}건 덮어쓰기 중...`;
+                const duplicateRowNumbers = new Set(duplicateResults.map((result) => result.rowNumber));
+                const overwriteItems = items.filter((item) => duplicateRowNumbers.has(item.rowNumber));
+                const overwriteResponse = await sendImportRequest(overwriteItems, true);
+                if (!overwriteResponse.ok) {
+                    importStatus.textContent = overwriteResponse.message;
+                    importSubmitButton.disabled = false;
+                    return;
+                }
+
+                const overwrittenResults = overwriteResponse.data.results ?? [];
+                const overwrittenRowNumbers = new Set(overwrittenResults.map((result) => result.rowNumber));
+                results = results
+                    .filter((result) => !overwrittenRowNumbers.has(result.rowNumber))
+                    .concat(overwrittenResults);
+            }
+        }
+
+        importResultsByRow = new Map(results.map((result) => [result.rowNumber, result]));
+        selectedImportRows = new Set();
+        importStatus.textContent = summarizeImportResults(results);
+        renderImportPreview();
+        await loadFoods();
+    };
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         const payload = getPayload();
@@ -669,6 +1046,49 @@
     };
 
     document.getElementById('reset-btn').addEventListener('click', resetForm);
+    importOpenButton.addEventListener('click', openImportModal);
+    importModalClose.addEventListener('click', closeImportModal);
+    importModal.addEventListener('click', (event) => {
+        if (event.target === importModal) {
+            closeImportModal();
+        }
+    });
+    importDropzone.addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', () => previewImportFile(importFileInput.files?.[0]));
+    importDropzone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        importDropzone.classList.add('dragover');
+    });
+    importDropzone.addEventListener('dragleave', () => {
+        importDropzone.classList.remove('dragover');
+    });
+    importDropzone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        importDropzone.classList.remove('dragover');
+        previewImportFile(event.dataTransfer?.files?.[0]);
+    });
+    importSelectAll.addEventListener('change', () => {
+        const validRows = importPreviewRows.filter((row) => row.valid);
+        selectedImportRows = importSelectAll.checked
+            ? new Set(validRows.map((row) => row.rowNumber))
+            : new Set();
+        renderImportPreview();
+    });
+    importPreviewBody.addEventListener('change', (event) => {
+        if (!event.target.classList.contains('import-row-select')) {
+            return;
+        }
+
+        const rowNumber = Number(event.target.dataset.rowNumber);
+        if (event.target.checked) {
+            selectedImportRows.add(rowNumber);
+        } else {
+            selectedImportRows.delete(rowNumber);
+        }
+        updateImportSelectionState();
+    });
+    importSubmitButton.addEventListener('click', submitImportRows);
+    importClearButton.addEventListener('click', resetImportPreview);
     searchButton.addEventListener('click', searchExternalFood);
     listSearchButton.addEventListener('click', searchFoodList);
     listSearchResetButton.addEventListener('click', resetFoodListSearch);
@@ -705,8 +1125,14 @@
         }
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !searchModal.classList.contains('hidden')) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        if (!searchModal.classList.contains('hidden')) {
             closeSearchModal();
+        }
+        if (!importModal.classList.contains('hidden')) {
+            closeImportModal();
         }
     });
 
